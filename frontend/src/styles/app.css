@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .layout-container {
+    @apply h-screen flex overflow-hidden bg-gray-50;
+  }
+
+  .main-content {
+    @apply flex-1 flex flex-col min-w-0;
+  }
+
+  .panel {
+    @apply bg-white h-full flex flex-col;
+  }
+
+  .panel-header {
+    @apply p-4 border-b bg-gray-50;
+  }
+
+  .panel-content {
+    @apply flex-1 overflow-auto;
+  }
+
+  .tool-item {
+    @apply relative p-4 rounded-lg border transition-all;
+  }
+
+  .tool-item:hover {
+    @apply border-indigo-300 bg-gray-50;
+  }
+
+  .tool-item.selected {
+    @apply bg-indigo-50 border-indigo-500 shadow-sm;
+  }
+
+  .category-badge {
+    @apply px-2 py-1 text-xs rounded-full;
+  }
+
+  .badge-fuzzing {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .badge-simulation {
+    @apply bg-blue-100 text-blue-800;
+  }
+
+  .badge-framework {
+    @apply bg-purple-100 text-purple-800;
+  }
+
+  .console {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  .console-header {
+    @apply flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700;
+  }
+
+  .console-content {
+    @apply flex-1 p-4 font-mono text-sm overflow-auto;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  @apply w-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "ai4sim-dashboard",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "build": "cd frontend && npm run build && cd ../backend && npm run build"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.17",
+    "@types/tcp-port-used": "^1.0.4",
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "ws": "^8.18.2"
+  }
+}

@@ -1,0 +1,336 @@
+﻿
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx:90 ✅ CampaignDetailView: Scenarios loaded
+CampaignDetailView.tsx:78 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aaclient:495 [vite] connecting...
+client:618 [vite] connected.
+chunk-PJEEZAML.js?v=b682f484:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+wazuhService.ts:97 Wazuh Service initialized with config: {baseUrl: 'https://localhost:55000', username: 'wazuh', timeout: 10000}
+aiAnalysisService.ts:79 Loaded 9 cached AI analyses from storage
+aiAnalysisService.ts:804 AI Analysis improvements check skipped (checked recently)
+scenarioTerminalService.ts:38 [SCENARIO-TERMINAL-SERVICE] WebSocket listeners disabled to prevent duplication
+CampaignDetailView.tsx?t=1748431633485:81 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:232 🎯 ProjectStore: Sélection directe du projet: 682efcd942b4cce576f6488a
+projectStore.ts:246 🔍 ProjectStore: Récupération du projet depuis le serveur: 682efcd942b4cce576f6488a
+projectService.ts:25 🔍 projectService: Demande du projet avec ID: 682efcd942b4cce576f6488a
+CampaignDetailView.tsx?t=1748431633485:81 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:206 ⏳ ProjectStore: Une sélection pour ce projet est déjà en cours, attente...
+projectService.ts:28 ✅ projectService: Projet récupéré avec succès: {_id: '682efcd942b4cce576f6488a', name: 'test', description: 'No description provided', owner: '67b702dd4aa4b3b4b70a3f3d', sharedWith: Array(0), …}
+projectStore.ts:253 ✅ ProjectStore: Projet récupéré avec succès depuis le serveur: test
+projectStore.ts:284 💾 ProjectStore: ID du projet sauvegardé dans le stockage local: 682efcd942b4cce576f6488a
+CampaignDetailView.tsx?t=1748431633485:83 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 ajoutée pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx?t=1748431633485:86 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (3) [{…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(3)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx?t=1748431633485:93 ✅ CampaignDetailView: Scenarios loaded
+CampaignDetailView.tsx?t=1748431633485:83 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx?t=1748431633485:86 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (3) [{…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(3)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx?t=1748431633485:93 ✅ CampaignDetailView: Scenarios loaded
+projectStore.ts:124 🔒 ProjectStore: Verrou activé, récupération des projets...
+projectService.ts:6 📂 projectService: Récupération de tous les projets
+projectStore.ts:105 ⏳ ProjectStore: Une requête est déjà en cours, attente...
+projectService.ts:9 ✅ projectService: 8 projets récupérés
+projectService.ts:14 📋 IDs des projets disponibles: (8) ['682efcd942b4cce576f6488a', '682efcf542b4cce576f648ab', '682efe3cd651053f2d6f49df', '682f2ee4768f9dc8d533b665', '682f2ef1768f9dc8d533b68c', '68320d270e0d4c1d6f35efcb', '68357739beac334cd1ea5415', '68357a5abeac334cd1ea5491']
+projectStore.ts:127 ✅ ProjectStore: Projets récupérés avec succès: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+projectStore.ts:116 📋 ProjectStore: Utilisation des projets en cache, dernière mise à jour il y a 0 secondes
+projectStore.ts:116 📋 ProjectStore: Utilisation des projets en cache, dernière mise à jour il y a 0 secondes
+projectStore.ts:116 📋 ProjectStore: Utilisation des projets en cache, dernière mise à jour il y a 0 secondes
+projectStore.ts:116 📋 ProjectStore: Utilisation des projets en cache, dernière mise à jour il y a 3 secondes
+projectStore.ts:116 📋 ProjectStore: Utilisation des projets en cache, dernière mise à jour il y a 3 secondes
+CampaignDetailView.tsx?t=1748431633485:81 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:200 ⏩ ProjectStore: Projet déjà sélectionné, aucune requête supplémentaire nécessaire
+CampaignDetailView.tsx?t=1748431633485:81 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:200 ⏩ ProjectStore: Projet déjà sélectionné, aucune requête supplémentaire nécessaire
+CampaignDetailView.tsx?t=1748431633485:83 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+CampaignDetailView.tsx?t=1748431633485:83 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx?t=1748431633485:86 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx?t=1748431633485:86 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (3) [{…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(3)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx?t=1748431633485:93 ✅ CampaignDetailView: Scenarios loaded
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (3) [{…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(3)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx?t=1748431633485:93 ✅ CampaignDetailView: Scenarios loaded
+client:602 
+            
+            
+           GET http://localhost:5173/src/components/views/CampaignDetailView.tsx?t=1748431659423 net::ERR_ABORTED 500 (Internal Server Error)
+importUpdatedModule @ client:602
+fetchUpdate @ client:211
+queueUpdate @ client:186
+(anonymous) @ client:642
+handleMessage @ client:640
+(anonymous) @ client:550Understand this errorAI
+client:176 [hmr] Failed to reload /src/components/views/CampaignDetailView.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)
+warnFailedUpdate @ client:176
+fetchUpdate @ client:213
+await in fetchUpdate
+queueUpdate @ client:186
+(anonymous) @ client:642
+handleMessage @ client:640
+(anonymous) @ client:550Understand this errorAI
+client:223 [vite] hot updated: /src/components/views/CampaignDetailView.tsx
+client:223 [vite] hot updated: /src/index.css
+client:223 [vite] hot updated: /src/components/views/CampaignDetailView.tsx
+client:223 [vite] hot updated: /src/index.css
+CampaignDetailView.tsx:75 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:200 ⏩ ProjectStore: Projet déjà sélectionné, aucune requête supplémentaire nécessaire
+CampaignDetailView.tsx:78 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx:82 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (3) [{…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(3)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx:90 ✅ CampaignDetailView: Scenarios loaded
+projectStore.ts:124 🔒 ProjectStore: Verrou activé, récupération des projets...
+projectService.ts:6 📂 projectService: Récupération de tous les projets
+projectStore.ts:105 ⏳ ProjectStore: Une requête est déjà en cours, attente...
+projectService.ts:9 ✅ projectService: 8 projets récupérés
+projectService.ts:14 📋 IDs des projets disponibles: (8) ['682efcd942b4cce576f6488a', '682efcf542b4cce576f648ab', '682efe3cd651053f2d6f49df', '682f2ee4768f9dc8d533b665', '682f2ef1768f9dc8d533b68c', '68320d270e0d4c1d6f35efcb', '68357739beac334cd1ea5415', '68357a5abeac334cd1ea5491']
+projectStore.ts:127 ✅ ProjectStore: Projets récupérés avec succès: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+projectStore.ts:116 📋 ProjectStore: Utilisation des projets en cache, dernière mise à jour il y a 0 secondes
+CampaignDetailView.tsx:75 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:200 ⏩ ProjectStore: Projet déjà sélectionné, aucune requête supplémentaire nécessaire
+CampaignDetailView.tsx:75 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:200 ⏩ ProjectStore: Projet déjà sélectionné, aucune requête supplémentaire nécessaire
+CampaignDetailView.tsx:78 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+CampaignDetailView.tsx:78 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx:82 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx:82 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (3) [{…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(3)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx:90 ✅ CampaignDetailView: Scenarios loaded
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (3) [{…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(3)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx:90 ✅ CampaignDetailView: Scenarios loaded
+projectManagementStore.ts:164 📝 Store: Création du scénario avec données: {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06', data: {…}}
+projectManagementService.ts:85 📊 ScenarioService: Création d'un scénario dans le projet=682efcd942b4cce576f6488a, campagne=6836ef2d38e2aa20ddf11f06 {name: 'etst', description: '', campaignId: '6836ef2d38e2aa20ddf11f06', targets: Array(0), attacks: Array(0), …}
+projectManagementService.ts:95 ✅ ScenarioService: Scénario créé avec succès: {name: 'etst', description: '', project: '682efcd942b4cce576f6488a', campaign: '6836ef2d38e2aa20ddf11f06', targets: Array(0), …}
+projectManagementStore.ts:171 ✅ Store: Scénario créé avec succès: {name: 'etst', description: '', project: '682efcd942b4cce576f6488a', campaign: '6836ef2d38e2aa20ddf11f06', targets: Array(0), …}
+projectManagementService.ts:59 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:61 ✅ ScenarioService: 4 scénarios reçus
+CampaignDetailView.tsx:75 🔄 CampaignDetailView: Loading campaign - projectId=682efcd942b4cce576f6488a, campaignId=6836ef2d38e2aa20ddf11f06
+projectStore.ts:200 ⏩ ProjectStore: Projet déjà sélectionné, aucune requête supplémentaire nécessaire
+CampaignDetailView.tsx:78 ✅ CampaignDetailView: Project selected - projectId=682efcd942b4cce576f6488a
+projectManagementService.ts:177 📊 CampaignService: Fetching campaign with ID 6836ef2d38e2aa20ddf11f06 for project 682efcd942b4cce576f6488a
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx:82 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... {projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: (4) [{…}, {…}, {…}, {…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: {key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(4)}key: "682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06"scenarios: (4) [{…}, {…}, {…}, {…}][[Prototype]]: Object
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx:90 ✅ CampaignDetailView: Scenarios loaded20ddf11f06 for project 682efcd942b4cce576f6488a
+projectManagementService.ts:179 ✅ CampaignService: Successfully retrieved campaign 6836ef2d38e2aa20ddf11f06
+projectManagementStore.ts:465 🔄 ProjectManagementStore: Campagne 6836ef2d38e2aa20ddf11f06 mise à jour pour le projet 682efcd942b4cce576f6488a
+CampaignDetailView.tsx:82 ✅ CampaignDetailView: Campaign loaded
+projectManagementStore.ts:87 🔍 Store: Chargement des scénarios... 
+{projectId: '682efcd942b4cce576f6488a', campaignId: '6836ef2d38e2aa20ddf11f06'}
+projectManagementService.ts:24 📊 ScenarioService: Récupération des scénarios pour projet=682efcd942b4cce576f6488a et campagne=6836ef2d38e2aa20ddf11f06
+projectManagementService.ts:26 📊 ScenarioService: Scénarios reçus: 
+[{…}]
+projectManagementStore.ts:100 ✅ Store: Scénarios reçus: 
+{key: '682efcd942b4cce576f6488a-6836ef2d38e2aa20ddf11f06', scenarios: Array(1)}
+projectManagementStore.ts:108 💾 Store: État mis à jour avec les scénarios
+CampaignDetailView.tsx:90 ✅ CampaignDetailView: Scenarios loaded
+websocket.ts:180 Scheduling WebSocket reconnect in 1000ms (attempt 1/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 1500ms (attempt 2/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+checkServerAvailability	@	websocket.ts:230
+scheduleReconnect	@	websocket.ts:183
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+setTimeout		
+(anonymous)	@	websocket.ts:190
+Promise.then		
+scheduleReconnect	@	websocket.ts:184
+(anonymous)	@	websocket.ts:190
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 2250ms (attempt 3/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 3375ms (attempt 4/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 5062.5ms (attempt 5/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:274 No pong received for 30 seconds, reconnecting...
+websocket.ts:140 WebSocket closed with code 1005: 
+websocket.ts:198 Failed to reconnect after 5 attempts
+websocket.ts:180 Scheduling WebSocket reconnect in 1000ms (attempt 1/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 1500ms (attempt 2/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 2250ms (attempt 3/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 3375ms (attempt 4/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 5062.5ms (attempt 5/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:198 Failed to reconnect after 5 attempts
+websocket.ts:274 No pong received for 30 seconds, reconnecting...
+websocket.ts:140 WebSocket closed with code 1005: 
+websocket.ts:198 Failed to reconnect after 5 attempts
+websocket.ts:180 Scheduling WebSocket reconnect in 1000ms (attempt 1/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 1500ms (attempt 2/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 2250ms (attempt 3/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:274 No pong received for 30 seconds, reconnecting...
+websocket.ts:140 WebSocket closed with code 1005: 
+websocket.ts:180 Scheduling WebSocket reconnect in 3375ms (attempt 4/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 1000ms (attempt 1/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+websocket.ts:180 Scheduling WebSocket reconnect in 1500ms (attempt 2/5)
+websocket.ts:230 
+ HEAD http://localhost:3000//api/health net::ERR_ABORTED 404 (Not Found)
+websocket.ts:188 Le serveur WebSocket semble inaccessible, tentative ultérieure
+﻿
+

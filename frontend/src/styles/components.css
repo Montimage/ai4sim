@@ -1,0 +1,111 @@
+/* Tabs styling */
+.tab-bar {
+  @apply flex items-center border-b border-gray-200 bg-white;
+  height: 42px;
+}
+
+.tab {
+  @apply relative flex items-center px-4 py-2 border-r border-gray-200 cursor-pointer transition-all;
+  min-width: 160px;
+}
+
+.tab.active {
+  @apply bg-indigo-50 border-b-2 border-indigo-500;
+}
+
+.tab:hover:not(.active) {
+  @apply bg-gray-50;
+}
+
+/* Tool list styling */
+.tool-list {
+  @apply divide-y divide-gray-100;
+}
+
+.tool-item {
+  @apply relative p-4 transition-all hover:bg-gray-50 cursor-pointer;
+}
+
+.tool-item.selected {
+  @apply bg-indigo-50;
+  @apply before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-indigo-500;
+}
+
+/* Console styling */
+.console-line {
+  @apply opacity-90 hover:opacity-100 transition-opacity;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.console-line:hover {
+  @apply bg-gray-800 rounded px-2;
+}
+
+/* Button styles */
+.btn {
+  @apply px-4 py-2 rounded-md font-medium transition-all;
+}
+
+.btn-primary {
+  @apply bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+}
+
+/* Form controls */
+.form-input {
+  @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+/* Panel layouts */
+.panel {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200;
+}
+
+.panel-header {
+  @apply px-4 py-3 border-b border-gray-200;
+  @apply flex items-center justify-between p-4 border-b bg-gray-50;
+}
+
+.panel-body {
+  @apply p-4;
+}
+
+/* Category badges */
+.category-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.category-badge-fuzzing {
+  @apply bg-green-100 text-green-800;
+}
+
+.category-badge-simulation {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.category-badge-framework {
+  @apply bg-purple-100 text-purple-800;
+}
+
+.attack-workspace {
+  @apply h-full flex flex-col;
+}
+
+.column-panel {
+  @apply bg-white overflow-auto border-r;
+}
+
+.output-panel {
+  @apply w-full border-t;
+}
+
+.panel-content {
+  @apply flex-1 p-4 overflow-auto;
+}

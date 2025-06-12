@@ -1,0 +1,275 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Variables de couleurs principales */
+    --color-primary: 79 70 229;    /* indigo-600 */
+    --color-secondary: 67 56 202;   /* indigo-700 */
+    --color-accent: 99 102 241;     /* indigo-500 */
+    
+    /* Variables pour le mode light (par défaut) */
+    --bg-primary: 255 255 255;      /* white */
+    --bg-secondary: 248 250 252;    /* slate-50 */
+    --bg-tertiary: 241 245 249;     /* slate-100 */
+    --bg-sidebar: 255 255 255;      /* white */
+    --bg-panel: 255 255 255;        /* white */
+    
+    --text-primary: 15 23 42;       /* slate-900 */
+    --text-secondary: 71 85 105;    /* slate-600 */
+    --text-tertiary: 100 116 139;   /* slate-500 */
+    --text-muted: 148 163 184;      /* slate-400 */
+    
+    --border-primary: 226 232 240;  /* slate-200 */
+    --border-secondary: 203 213 225; /* slate-300 */
+    
+    /* Couleurs de statut */
+    --color-success: 34 197 94;     /* green-500 */
+    --color-warning: 245 158 11;    /* amber-500 */
+    --color-error: 239 68 68;       /* red-500 */
+    --color-info: 59 130 246;       /* blue-500 */
+    
+    /* Ombres */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  /* Mode sombre */
+  .dark {
+    --bg-primary: 15 23 42;         /* slate-900 */
+    --bg-secondary: 30 41 59;       /* slate-800 */
+    --bg-tertiary: 51 65 85;        /* slate-700 */
+    --bg-sidebar: 15 23 42;         /* slate-900 */
+    --bg-panel: 30 41 59;           /* slate-800 */
+    
+    --text-primary: 248 250 252;    /* slate-50 */
+    --text-secondary: 203 213 225;  /* slate-300 */
+    --text-tertiary: 148 163 184;   /* slate-400 */
+    --text-muted: 100 116 139;      /* slate-500 */
+    
+    --border-primary: 51 65 85;     /* slate-700 */
+    --border-secondary: 71 85 105;  /* slate-600 */
+  }
+
+  /* Application du thème au body */
+  body {
+    background: rgb(var(--bg-secondary));
+    color: rgb(var(--text-primary));
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Mode light spécifique */
+  body.light {
+    background: linear-gradient(135deg, rgb(248 250 252) 0%, rgb(241 245 249) 50%, rgb(226 232 240) 100%);
+  }
+
+  /* Mode dark spécifique */
+  body.dark {
+    background: linear-gradient(135deg, rgb(15 23 42) 0%, rgb(30 41 59) 50%, rgb(79 70 229) 100%);
+  }
+}
+
+@layer components {
+  /* Classes utilitaires pour les thèmes */
+  .bg-theme-primary {
+    background-color: rgb(var(--bg-primary));
+  }
+
+  .bg-theme-secondary {
+    background-color: rgb(var(--bg-secondary));
+  }
+
+  .bg-theme-tertiary {
+    background-color: rgb(var(--bg-tertiary));
+  }
+
+  .bg-theme-sidebar {
+    background-color: rgb(var(--bg-sidebar));
+  }
+
+  .bg-theme-panel {
+    background-color: rgb(var(--bg-panel));
+  }
+
+  .text-theme-primary {
+    color: rgb(var(--text-primary));
+  }
+
+  .text-theme-secondary {
+    color: rgb(var(--text-secondary));
+  }
+
+  .text-theme-tertiary {
+    color: rgb(var(--text-tertiary));
+  }
+
+  .text-theme-muted {
+    color: rgb(var(--text-muted));
+  }
+
+  .border-theme-primary {
+    border-color: rgb(var(--border-primary));
+  }
+
+  .border-theme-secondary {
+    border-color: rgb(var(--border-secondary));
+  }
+
+  /* Composants de base */
+  .panel {
+    @apply bg-theme-panel text-theme-primary rounded-lg shadow-md border border-theme-primary;
+    transition: all 0.3s ease;
+  }
+
+  .panel:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+  }
+
+  .panel-header {
+    @apply bg-theme-tertiary text-theme-primary p-4 rounded-t-lg border-b border-theme-primary;
+  }
+
+  .panel-content {
+    @apply p-4 bg-theme-panel;
+  }
+
+  .button-primary {
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200;
+  }
+
+  .button-secondary {
+    @apply bg-theme-tertiary hover:bg-theme-secondary text-theme-primary border border-theme-primary shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .input-theme {
+    @apply bg-theme-primary border border-theme-primary text-theme-primary placeholder-theme-muted focus:border-indigo-500 focus:ring-indigo-500/20;
+  }
+
+  /* Sidebar spécifique */
+  .sidebar-theme {
+    background: linear-gradient(180deg, rgb(var(--bg-sidebar)) 0%, rgb(var(--bg-secondary)) 100%);
+  }
+
+  /* Mode light pour la sidebar */
+  .light .sidebar-theme {
+    background: linear-gradient(180deg, rgb(255 255 255) 0%, rgb(248 250 252) 100%);
+    border-right: 1px solid rgb(var(--border-primary));
+  }
+
+  /* Mode dark pour la sidebar */
+  .dark .sidebar-theme {
+    background: linear-gradient(180deg, rgb(15 23 42) 0%, rgb(30 41 59) 100%);
+    border-right: 1px solid rgb(var(--border-primary));
+  }
+
+  /* Navigation items */
+  .nav-item {
+    @apply transition-all duration-300 rounded-xl p-4 text-left;
+  }
+
+  .nav-item:hover {
+    background-color: rgb(var(--bg-tertiary) / 0.5);
+  }
+
+  .nav-item.active {
+    background-color: rgb(var(--color-primary) / 0.1);
+    border: 1px solid rgb(var(--color-primary) / 0.3);
+    color: rgb(var(--color-primary));
+  }
+
+  /* Mode light pour les nav items */
+  .light .nav-item {
+    color: rgb(var(--text-secondary));
+  }
+
+  .light .nav-item:hover {
+    background-color: rgb(241 245 249);
+    color: rgb(var(--text-primary));
+  }
+
+  .light .nav-item.active {
+    background-color: rgb(79 70 229 / 0.1);
+    color: rgb(79 70 229);
+  }
+
+  /* Mode dark pour les nav items */
+  .dark .nav-item {
+    color: rgb(203 213 225 / 0.7);
+  }
+
+  .dark .nav-item:hover {
+    background-color: rgb(255 255 255 / 0.1);
+    color: rgb(255 255 255);
+  }
+
+  .dark .nav-item.active {
+    background-color: rgb(79 70 229 / 0.2);
+    color: rgb(255 255 255);
+  }
+
+  /* Glass effects */
+  .glass {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .glass-light {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-dark {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Scrollbars */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgb(var(--bg-tertiary));
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(var(--text-muted));
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--text-tertiary));
+  }
+
+  /* Gradients */
+  .gradient-primary {
+    background: linear-gradient(135deg, rgb(var(--bg-primary)) 0%, rgb(var(--bg-secondary)) 100%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Animations */
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

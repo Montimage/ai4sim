@@ -1,0 +1,13 @@
+.tool-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.tool-item:hover {
+  transform: translateX(4px);
+}
+
+.tool-item.selected {
+  border-color: #4f46e5;
+  background-color: #eef2ff;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+}

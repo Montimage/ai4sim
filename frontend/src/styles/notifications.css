@@ -1,0 +1,110 @@
+.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    border-radius: 4px;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    max-width: 400px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification-success {
+    background-color: #4caf50;
+    color: white;
+}
+
+.notification-error {
+    background-color: #f44336;
+    color: white;
+}
+
+.notification-warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.notification-info {
+    background-color: #2196f3;
+    color: white;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+}
+
+.notification-message {
+    margin-left: 8px;
+}
+
+.light .notification:not(:last-child) {
+  border-bottom: 1px solid #73008a; /* clearer separator in light mode */
+}
+
+.light .dashboard-notifications .notification + .notification {
+  border-top: 1px solid rgba(0, 0, 0, 0.1); /* nearly transparent separator in light mode */
+}
+
+/* Drastically revamped scrollbar styling for dashboard notifications in light mode */
+.light .dashboard-notifications::-webkit-scrollbar {
+  width: 10px;
+}
+.light .dashboard-notifications::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #f9fafb, #ffffff);
+  border-radius: 10px;
+}
+.light .dashboard-notifications::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #a5b4fc, #6366f1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+}
+.light .dashboard-notifications::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #818cf8, #4f46e5);
+}
+/* Firefox styling */
+.light .dashboard-notifications {
+  scrollbar-width: thin;
+  scrollbar-color: #6366f1 transparent;
+}
+
+/* Minimalist scrollbar styling for dashboard notifications (desktop only) */
+@media (min-width: 768px) {
+  .dashboard-notifications::-webkit-scrollbar {
+    width: 8px; /* Thinner scrollbar */
+  }
+
+  .dashboard-notifications::-webkit-scrollbar-track {
+    background: transparent; /* No track */
+  }
+
+  .dashboard-notifications::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.5); /* Semi-transparent gray thumb */
+    border-radius: 4px; /* Rounded corners */
+  }
+
+  .dashboard-notifications::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.7); /* Slightly darker on hover */
+  }
+
+  /* Hide scrollbar in Firefox */
+  .dashboard-notifications {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(107, 114, 128, 0.5) transparent;
+  }
+}
+
+/* Utility class for text truncation */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
