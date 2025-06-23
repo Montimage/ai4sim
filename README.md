@@ -9,6 +9,10 @@
 
 **AI4SIM Dashboard** is a comprehensive web platform designed for managing and executing cybersecurity tests and attack simulations. This full-stack solution combines an intuitive user interface with a robust backend to orchestrate automated penetration testing campaigns.
 
+ ⚠️ **Important Note: For Educational and Research Purposes**
+
+This project is designed **solely for educational and research purposes**. It's intended for use in controlled environments to study and understand cybersecurity principles, perform security testing, and simulate attacks in a **safe and ethical manner**. **Under no circumstances should this software be used for malicious activities or without explicit authorization.** Users are solely responsible for ensuring their actions comply with all applicable laws and ethical guidelines.
+
 ## 🚀 Key Features
 
 - **🎯 Project Management**: Hierarchical organization with team-based access control
