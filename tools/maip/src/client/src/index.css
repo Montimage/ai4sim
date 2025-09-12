@@ -1,0 +1,94 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Optimisations pour le plein écran */
+.fullscreen-optimized {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.fullscreen-optimized .ant-layout {
+  height: 100vh !important;
+  min-height: 100vh !important;
+}
+
+.fullscreen-optimized .ant-layout-header {
+  padding: 0 12px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+}
+
+.fullscreen-optimized .ant-layout-content {
+  height: calc(100vh - 48px) !important;
+  overflow-y: auto !important;
+}
+
+.fullscreen-optimized .ant-layout-footer {
+  display: none !important;
+}
+
+/* Optimiser les tables et contenus pour utiliser tout l'espace */
+.fullscreen-optimized .ant-table-wrapper {
+  height: calc(100% - 100px) !important;
+}
+
+.fullscreen-optimized .ant-table-tbody {
+  height: 100% !important;
+}
+
+/* Optimiser les formulaires et cartes */
+.fullscreen-optimized .ant-card {
+  height: 100% !important;
+}
+
+.fullscreen-optimized .ant-card-body {
+  height: calc(100% - 57px) !important;
+  overflow-y: auto !important;
+}
+
+/* Optimiser les menus */
+.fullscreen-optimized .ant-menu {
+  font-size: 14px !important;
+}
+
+.fullscreen-optimized .ant-menu-item {
+  height: 36px !important;
+  line-height: 36px !important;
+}
+
+/* Optimiser les graphiques et visualisations */
+.fullscreen-optimized .recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Réduire les marges et paddings en plein écran */
+.fullscreen-optimized .ant-row {
+  margin: 0 !important;
+}
+
+.fullscreen-optimized .ant-col {
+  padding: 4px !important;
+}
+
+/* Optimiser les modales en plein écran */
+.fullscreen-optimized .ant-modal {
+  max-width: 90vw !important;
+  top: 20px !important;
+}
+
+.fullscreen-optimized .ant-modal-body {
+  max-height: calc(100vh - 200px) !important;
+  overflow-y: auto !important;
+}

