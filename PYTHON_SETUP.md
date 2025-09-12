@@ -1,16 +1,16 @@
-# Configuration des Environnements Python
+# Python Environment Configuration
 
 ## ⚠️ Important
-Les environnements virtuels Python (`venv/`, `tutorial-env/`) ne sont **PAS versionnés** car ils contiennent des chemins hardcodés spécifiques à chaque machine.
+Python virtual environments (`venv/`, `tutorial-env/`) are **NOT versioned** because they contain hardcoded paths specific to each machine.
 
-## Installation des Environnements Virtuels
+## Virtual Environment Installation
 
 ### 1. MAIP (Montimage AI Platform)
 ```bash
 cd tools/maip
 python3 -m venv venv
 source venv/bin/activate  # Linux/Mac
-# ou
+# or
 venv\Scripts\activate     # Windows
 pip install -r src/server/deep-learning/requirements.txt
 ```
@@ -20,7 +20,7 @@ pip install -r src/server/deep-learning/requirements.txt
 cd tools/shennina
 python3 -m venv tutorial-env
 source tutorial-env/bin/activate  # Linux/Mac
-# ou
+# or
 tutorial-env\Scripts\activate     # Windows
 pip install -r requirements.txt
 ```
@@ -30,7 +30,7 @@ pip install -r requirements.txt
 cd tools/knxsmartfuzzer
 python3 -m venv venv
 source venv/bin/activate  # Linux/Mac
-# ou
+# or
 venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 ```
@@ -40,13 +40,13 @@ pip install -r requirements.txt
 cd tools/caldera
 python3 -m venv venv
 source venv/bin/activate  # Linux/Mac
-# ou
+# or
 venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 ```
 
 ## Notes
-- Les environnements virtuels sont automatiquement ignorés par Git (voir `.gitignore`)
-- Chaque outil a ses propres dépendances Python
-- Les chemins dans les environnements virtuels seront automatiquement corrects lors de la création
+- Virtual environments are automatically ignored by Git (see `.gitignore`)
+- Each tool has its own Python dependencies
+- Paths in virtual environments will be automatically correct upon creation
 
