@@ -72,23 +72,14 @@ npm run install:all
 
 ### 3. Environment Configuration
 
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in the `backend/` directory by copying the `.env.example` file and modifying the values according to your environment:
 
-```env
-# Database Configuration
-MONGODB_URI=mongodb://localhost:27017/ai4sim-dashboard
-
-# Security Settings
-JWT_SECRET=your-very-secure-secret-key-change-this
-
-# Server Configuration
-PORT=3000
-WS_PORT=9090
-HOST=localhost
-
-# Logging
-LOG_LEVEL=info
+```bash
+cd backend
+cp .env.example .env
 ```
+
+Then edit the `.env` file with your specific configuration values. The file contains all necessary environment variables with detailed comments.
 
 ### 4. Start MongoDB
 
@@ -219,7 +210,7 @@ AI4SIM Dashboard supports integration with various security tools:
 ## 🏗️ Project Structure
 
 ```
-ai4sim-dashboard/
+ai4sim/
 ├── frontend/              # React Interface
 ├── backend/               # Node.js API
 ├── tools/                 # Integrated tools
@@ -227,10 +218,11 @@ ai4sim-dashboard/
 │   ├── maip/             # MAIP Platform
 │   ├── shennina/         # Shennina Tool
 │   └── knxsmartfuzzer/   # KNX Smart Fuzzer
-├── scripts/              # Utility scripts
-├── docs/                 # Documentation
-├── env.example           # Configuration example
-└── package.json          # Main dependencies
+├── LICENSE                # License file
+├── package.json           # Main dependencies
+├── PYTHON_SETUP.md        # Python setup guide
+├── README.md              # This file
+└── VERSION                # Version information
 ```
 
 ## 🐛 Troubleshooting

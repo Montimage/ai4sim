@@ -25,7 +25,7 @@ export const config = {
         maxConcurrent: 5
     },
     mongodb: {
-        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/dashboard-fusion',
+        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/ai4sim',
         options: {
             useNewUrlParser: true,
             useUnifiedTopology: true
