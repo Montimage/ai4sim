@@ -51,12 +51,12 @@ class PDFExportService {
         
         doc.setFontSize(fontSize);
         if (style === 'bold') {
-          doc.setFont(undefined, 'bold');
+          doc.setFont('', 'bold');
         } else {
-          doc.setFont(undefined, 'normal');
+          doc.setFont('', 'normal');
         }
         
-        doc.text(text, x, yPosition);
+        doc.text(text || '', x, yPosition);
         yPosition += lineHeight;
       };
 
@@ -86,7 +86,7 @@ class PDFExportService {
       // Targets
       addSection('Targets');
       execution.targets.forEach((target, index) => {
-        addText(`${index + 1}. ${target.name} (${target.host}${target.port ? `:${target.port}` : ''})`, margin + 5);
+        addText(`${index + 1}. ${target.name} (${target.host})`, margin + 5);
       });
 
       // Attacks with detailed outputs
@@ -232,12 +232,12 @@ class PDFExportService {
         
         doc.setFontSize(fontSize);
         if (style === 'bold') {
-          doc.setFont(undefined, 'bold');
+          doc.setFont('', 'bold');
         } else {
-          doc.setFont(undefined, 'normal');
+          doc.setFont('', 'normal');
         }
         
-        doc.text(text, x, yPosition);
+        doc.text(text || '', x, yPosition);
         yPosition += lineHeight;
       };
 

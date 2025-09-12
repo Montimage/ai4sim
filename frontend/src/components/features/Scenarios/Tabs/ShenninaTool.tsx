@@ -228,7 +228,6 @@ const ShenninaTool: React.FC<ShenninaToolProps> = ({ scenario, onUpdate }) => {
             <div className="text-sm text-amber-800 dark:text-amber-200">
               <p className="font-medium mb-1">Important Notes:</p>
               <ul className="space-y-1 text-xs">
-                <li>• AI tools will run continuously in the background during scenario execution</li>
                 <li>• Make sure target systems are properly configured and accessible</li>
                 <li>• Training mode is recommended for learning environments</li>
                 <li>• Full exploitation mode should only be used on authorized targets</li>

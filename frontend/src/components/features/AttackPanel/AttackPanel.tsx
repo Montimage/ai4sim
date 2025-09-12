@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAttackStore } from '../../../store/attackStore';
-import { InitialChoiceDialog } from './InitialChoiceDialog';
+import { getFilteredTools, Tool, Attack } from '../../../constants/tools';
+import { 
+  BoltIcon, 
+  Cog6ToothIcon, 
+  CommandLineIcon, 
+  ChevronRightIcon 
+} from '@heroicons/react/24/outline';
+import { globalWebSocketHandler } from '../../../services/globalWebSocketHandler';
+
+// Components
+import { TabsManager } from './TabsManager';
 import { CategorySelector } from './CategorySelector';
 import { ToolList } from './ToolList';
 import { ConfigPanel } from './ConfigPanel';
 import { OutputPanel } from './OutputPanel';
-import MultiOutputPanel from './MultiOutputPanel';
-import { TabsManager } from './TabsManager';
-import { FullAIAssessment } from './FullAIAssessment';
+import { MultiOutputPanel } from './MultiOutputPanel';
+import { ViewSwitcher } from './ViewSwitcher';
+import { InitialChoiceDialog } from './InitialChoiceDialog';
 import { ConfigurationManager } from './ConfigurationManager';
-import { TOOLS } from '../../../constants/tools';
-import { 
-  BoltIcon, 
-  Cog6ToothIcon,
-  CommandLineIcon,
-  ChevronRightIcon,
-  PlusIcon
-} from '@heroicons/react/24/outline';
+import { FullAIAssessment } from './FullAIAssessment';
 import { useNotificationStore } from '../../../store/notificationStore';
 
 export const AttackPanel: React.FC = () => {
@@ -41,10 +44,21 @@ export const AttackPanel: React.FC = () => {
 
   const activeTabState = activeTabId ? getTabState(activeTabId) : null;
 
+  // Initialize global WebSocket handler for background processing
+  useEffect(() => {
+    console.log('🚀 AttackPanel: Initializing global WebSocket handler');
+    globalWebSocketHandler.initialize();
+    
+    return () => {
+      console.log('🚀 AttackPanel: Cleaning up global WebSocket handler');
+      globalWebSocketHandler.destroy();
+    };
+  }, []);
+
   // Récupérer l'objet Tool complet à partir de l'ID
   const getSelectedTool = () => {
     if (!activeTabState?.selectedTool) return null;
-    return TOOLS.find(tool => tool.id === activeTabState.selectedTool) || null;
+    return getFilteredTools().find((tool: Tool) => tool.id === activeTabState.selectedTool) || null;
   };
 
   const selectedTool = getSelectedTool();
@@ -105,11 +119,6 @@ export const AttackPanel: React.FC = () => {
     event.target.value = '';
   };
 
-  const handleCreateTab = () => {
-    addTab();
-    setShowInitialChoice(false);
-  };
-
   // Navigation handlers - utilise le store pour gérer l'état
   const handleBackToCategories = () => {
     if (activeTabId) {
@@ -125,7 +134,17 @@ export const AttackPanel: React.FC = () => {
     if (activeTabId) {
       updateTabState(activeTabId, { 
         selectedTool: undefined,
-        selectedAttack: undefined
+        selectedAttack: undefined,
+        parameters: {}
+      });
+    }
+  };
+
+  const handleBackToAttacks = () => {
+    if (activeTabId) {
+      updateTabState(activeTabId, { 
+        selectedAttack: undefined,
+        parameters: {}
       });
     }
   };
@@ -172,9 +191,23 @@ export const AttackPanel: React.FC = () => {
       return 'full-ai-assessment';
     }
     
-    if (activeTabState.selectedTool && activeTabState.selectedAttack) {
-      return 'config';
-    } else if (activeTabState.selectedCategory) {
+    // Si un outil est sélectionné
+    if (activeTabState.selectedTool) {
+      // Si l'outil a plusieurs attaques et qu'aucune attaque n'est sélectionnée
+      if (selectedTool?.attacks && selectedTool.attacks.length > 1 && !activeTabState.selectedAttack) {
+        return 'attacks';
+      }
+      // Si une attaque est sélectionnée (ou si l'outil n'a qu'une seule attaque)
+      else if (activeTabState.selectedAttack || (selectedTool?.attacks && selectedTool.attacks.length <= 1)) {
+        return 'config';
+      }
+      // Si l'outil n'a pas d'attaques définies, aller directement à la config
+      else if (!selectedTool?.attacks || selectedTool.attacks.length === 0) {
+        return 'config';
+      }
+    }
+    
+    if (activeTabState.selectedCategory) {
       return 'tools';
     } else {
       return 'categories';
@@ -188,13 +221,28 @@ export const AttackPanel: React.FC = () => {
     if (!activeTabId || currentView !== 'config') return null;
     
     const tabState = useAttackStore.getState().tabStates[activeTabId];
-    const selectedTool = tabState?.selectedTool ? TOOLS.find(t => t.id === tabState.selectedTool) : null;
+    const selectedTool = tabState?.selectedTool ? getFilteredTools().find((t: Tool) => t.id === tabState.selectedTool) : null;
     
-    // Utiliser MultiOutputPanel si l'outil a des outputs multiples
-    if (selectedTool?.multiOutput?.enabled) {
-      return <MultiOutputPanel tabId={activeTabId} />;
+    // Utiliser ViewSwitcher pour les outils avec iframe
+    if (selectedTool?.iframe) {
+      const terminalContent = (selectedTool as any)?.multiOutput?.enabled ? (
+        <MultiOutputPanel key={`multi-${activeTabId}`} tabId={activeTabId} />
+      ) : (
+        <OutputPanel key={`output-${activeTabId}`} tabId={activeTabId} />
+      );
+      
+      return (
+        <ViewSwitcher tabId={activeTabId}>
+          {terminalContent}
+        </ViewSwitcher>
+      );
+    }
+    
+    // Utiliser MultiOutputPanel si l'outil a des outputs multiples (sans iframe)
+    if ((selectedTool as any)?.multiOutput?.enabled || (selectedTool as any)?.sequentialExecution?.enabled) {
+      return <MultiOutputPanel key={`multi-${activeTabId}`} tabId={activeTabId} />;
     } else {
-      return <OutputPanel tabId={activeTabId} />;
+      return <OutputPanel key={`output-${activeTabId}`} tabId={activeTabId} />;
     }
   };
 
@@ -203,28 +251,18 @@ export const AttackPanel: React.FC = () => {
       {/* Header - HAUTEUR FIXE */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 h-20">
         <div className="flex items-center justify-between h-full">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <BoltIcon className="h-6 w-6 text-indigo-600" />
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Attack Panel
-              </h1>
-            </div>
-            {!showInitialChoice && (
+          <div className="flex items-center space-x-2">
+            <BoltIcon className="h-6 w-6 text-indigo-600" />
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              Attack Panel
+            </h1>
+          </div>
+          {!showInitialChoice && (
+            <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 {openTabs.length} tab{openTabs.length !== 1 ? 's' : ''} open
               </div>
-            )}
-          </div>
-          
-          {showInitialChoice && (
-            <button
-              onClick={handleCreateTab}
-              className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200"
-            >
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Create Tab
-            </button>
+            </div>
           )}
         </div>
       </div>
@@ -293,7 +331,7 @@ export const AttackPanel: React.FC = () => {
                       </>
                     )}
                     
-                    {currentView === 'config' && (
+                    {currentView === 'attacks' && (
                       <>
                         <button
                           onClick={handleBackToCategories}
@@ -315,6 +353,48 @@ export const AttackPanel: React.FC = () => {
                           <CommandLineIcon className="w-4 h-4 mr-1" />
                           {selectedTool?.name}
                         </div>
+                      </>
+                    )}
+                    
+                    {currentView === 'config' && (
+                      <>
+                        <button
+                          onClick={handleBackToCategories}
+                          className="flex items-center text-gray-500 hover:text-primary-600 transition-colors"
+                        >
+                          <Cog6ToothIcon className="w-4 h-4 mr-1" />
+                          Categories
+                        </button>
+                        <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                        <button
+                          onClick={handleBackToTools}
+                          className="flex items-center text-gray-500 hover:text-primary-600 transition-colors"
+                        >
+                          <BoltIcon className="w-4 h-4 mr-1" />
+                          {activeTabState.selectedCategory}
+                        </button>
+                        <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                        {selectedTool?.attacks && selectedTool.attacks.length > 1 ? (
+                          <>
+                            <button
+                              onClick={handleBackToAttacks}
+                              className="flex items-center text-gray-500 hover:text-primary-600 transition-colors"
+                            >
+                              <CommandLineIcon className="w-4 h-4 mr-1" />
+                              {selectedTool?.name}
+                            </button>
+                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                            <div className="flex items-center text-primary-600 font-medium">
+                              <BoltIcon className="w-4 h-4 mr-1" />
+                              {selectedTool?.attacks?.find((a: Attack) => a.id === activeTabState.selectedAttack)?.name}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center text-primary-600 font-medium">
+                            <CommandLineIcon className="w-4 h-4 mr-1" />
+                            {selectedTool?.name}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -346,6 +426,73 @@ export const AttackPanel: React.FC = () => {
                     className="h-full overflow-hidden p-4"
                   >
                     <ToolList tabId={activeTabId} />
+                  </motion.div>
+                )}
+
+                {currentView === 'attacks' && activeTabId && selectedTool && (
+                  <motion.div
+                    key="attacks"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="h-full overflow-hidden"
+                  >
+                    <div className="h-full flex flex-col">
+                      {/* Header */}
+                      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Select Attack
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Choose from {selectedTool.attacks?.length} available attacks for {selectedTool.name}
+                        </p>
+                      </div>
+                      
+                      {/* Attacks List */}
+                      <div className="flex-1 overflow-y-auto p-4">
+                        <div className="space-y-3">
+                          {selectedTool.attacks?.map((attack) => (
+                            <button
+                              key={attack.id}
+                              onClick={() => {
+                                if (activeTabId) {
+                                  // Get default parameters for this attack
+                                  const defaultParams: Record<string, any> = {};
+                                  if (attack.parameters) {
+                                    Object.entries(attack.parameters).forEach(([key, param]) => {
+                                      defaultParams[key] = param.default !== undefined ? param.default : '';
+                                    });
+                                  }
+                                  
+                                  updateTabState(activeTabId, {
+                                    selectedAttack: attack.id,
+                                    parameters: defaultParams
+                                  });
+                                }
+                              }}
+                              className="w-full text-left p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                            >
+                              <div className="flex flex-col">
+                                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                                  {attack.name}
+                                </h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                                  {attack.description}
+                                </p>
+                                {attack.parameters && Object.keys(attack.parameters).length > 0 && (
+                                  <div className="mt-2">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                                      {Object.keys(attack.parameters).length} parameter{Object.keys(attack.parameters).length !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </motion.div>
                 )}
 

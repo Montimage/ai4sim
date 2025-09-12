@@ -1,7 +1,8 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
+import { getFilteredTools, Tool, Attack } from '../../../constants/tools';
 import { useAttackStore } from '../../../store/attackStore';
-import { TOOLS } from '../../../constants/tools';
-import { StopIcon, ClipboardIcon, AdjustmentsHorizontalIcon, ArrowsPointingOutIcon as ArrowsExpand, PencilSquareIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useTabOutputPersistence } from '../../../hooks/useTabOutputPersistence';
+import { StopIcon, ClipboardIcon, AdjustmentsHorizontalIcon, PencilSquareIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { websocket } from '../../../services/websocket';
 import { useNotificationStore } from '../../../store/notificationStore';
 import { useThemeStore } from '../../../store/themeStore';
@@ -38,9 +39,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
   const addNotification = useNotificationStore(state => state.addNotification);
   const theme = useThemeStore(state => state.theme);
   
+  // Utiliser le hook de persistance pour gérer automatiquement la restauration des outputs
+  useTabOutputPersistence(tabId);
+  
   // 4. Derived state
-  const selectedTool = TOOLS.find(tool => tool.id === tabState?.selectedTool);
-  const selectedAttack = selectedTool?.attacks?.find(attack => attack.id === tabState?.selectedAttack);
+  const selectedTool = getFilteredTools().find((tool: Tool) => tool.id === tabState?.selectedTool);
+  const selectedAttack = selectedTool?.attacks?.find((attack: Attack) => attack.id === tabState?.selectedAttack);
   const isRunning = tabState?.status === 'running' || tabState?.isRunning;
   const isLoading = tabState?.loading || false;
   const isIframeReady = tabState?.iframeReady || false;
@@ -49,19 +53,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
   const isActionDisabled = isLocked || isIframeReady;
   
   // 5. Handlers
-  const handleFullscreen = useCallback(() => {
-    if (!iframeRef.current) return;
-    
-    if (!isFullscreen) {
-      if (iframeRef.current.requestFullscreen) {
-        iframeRef.current.requestFullscreen();
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
-  }, [isFullscreen]);
 
   // Détecter les changements de plein écran
   useEffect(() => {
@@ -125,7 +116,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
   useEffect(() => {
     if (selectedTool?.multiOutput?.enabled) {
       // Pour les outils avec outputs multiples, afficher toutes les commandes
-      const commands = selectedTool.multiOutput.outputs.map(output => 
+      const commands = selectedTool.multiOutput.outputs.map((output: any) => 
         `${output.name}: ${output.command}`
       ).join('\n');
       setCommandPreview(commands);
@@ -165,8 +156,41 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
   }, [selectedTool, selectedAttack, tabState?.parameters, isEditingCommand]);
 
   const handleStopAttack = useCallback(() => {
-    const port = selectedTool?.iframe ? selectedTool.iframe.port : undefined;
-    websocket.send(JSON.stringify({ type: "stop", tabId, port }));
+    // Ajouter des messages spécifiques selon l'outil
+    if (selectedTool?.id === 'maip') {
+      useAttackStore.getState().addPersistentOutput(tabId, `🛑 Stopping MAIP services...`);
+      useAttackStore.getState().addPersistentOutput(tabId, `🔄 Stopping MAIP Server on port 31057`);
+      useAttackStore.getState().addPersistentOutput(tabId, `🔄 Stopping MAIP Client on port 3001`);
+      
+      // Envoyer la commande d'arrêt avec les ports spécifiques pour MAIP
+      websocket.send(JSON.stringify({ 
+        type: "stop", 
+        tabId, 
+        tool: "maip",
+        ports: [31057, 3001],
+        containers: ["mi_maip_server", "mi_maip_client"]
+      }));
+    } else if (selectedTool?.id === 'caldera') {
+      const calderaPort = selectedTool?.iframe?.port || 8888;
+      useAttackStore.getState().addPersistentOutput(tabId, `🛑 Stopping Caldera service...`);
+      useAttackStore.getState().addPersistentOutput(tabId, `🔄 Stopping Caldera on port ${calderaPort}`);
+      
+      // Envoyer la commande d'arrêt avec le port spécifique pour Caldera
+      websocket.send(JSON.stringify({ 
+        type: "stop", 
+        tabId, 
+        tool: "caldera",
+        ports: [calderaPort]
+      }));
+    } else {
+      // Pour les autres outils, utiliser la logique existante
+      const port = selectedTool?.iframe ? selectedTool.iframe.port : undefined;
+      if (selectedTool?.name) {
+        useAttackStore.getState().addPersistentOutput(tabId, `🛑 Stopping ${selectedTool.name}...`);
+      }
+      websocket.send(JSON.stringify({ type: "stop", tabId, port }));
+    }
+    
     updateTabState(tabId, { 
       status: 'stopped',
       isRunning: false,
@@ -174,6 +198,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
       iframeReady: false,
       lockedForInteraction: false
     });
+    
     addNotification({
       message: `Stopped ${selectedTool?.name}`,
       type: 'warning',
@@ -195,8 +220,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
       return;
     }
 
+    // Vidage complet au début - première étape
+    console.log(`🧹 ConfigPanel: Clearing ALL outputs for tab ${tabId} before execution`);
+    useAttackStore.getState().clearOutput(tabId);
+    useAttackStore.getState().clearOutputCache(tabId);
+
     // Vérifier si une commande est disponible
-    const hasCommand = selectedAttack?.command || selectedTool.command || tabState?.customCommand || selectedTool?.multiOutput?.enabled;
+    const hasCommand = selectedAttack?.command || selectedTool.command || tabState?.customCommand || 
+                      selectedTool?.multiOutput?.enabled || selectedTool?.sequentialExecution?.enabled;
     if (!hasCommand) {
       addNotification({
         message: "No command defined for this attack",
@@ -208,13 +239,19 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
       return;
     }
 
-    // Clear output before starting new attack execution
-    if (selectedTool?.multiOutput?.enabled) {
+    // Clear output again with specific logic for different tool types
+    if (selectedTool?.sequentialExecution?.enabled) {
+      // Initialiser les outputs pour l'exécution séquentielle
+      const outputIds = selectedTool.sequentialExecution.steps.map((step: any) => step.id);
+      useAttackStore.getState().initializeMultiOutputs(tabId, outputIds);
+      useAttackStore.getState().clearAllMultiOutputs(tabId);
+    } else if (selectedTool?.multiOutput?.enabled) {
       // Initialiser les outputs multiples
-      const outputIds = selectedTool.multiOutput.outputs.map(output => output.id);
+      const outputIds = selectedTool.multiOutput.outputs.map((output: any) => output.id);
       useAttackStore.getState().initializeMultiOutputs(tabId, outputIds);
       useAttackStore.getState().clearAllMultiOutputs(tabId);
     } else {
+      // Double vidage pour être sûr
       useAttackStore.getState().clearOutput(tabId);
     }
 
@@ -222,6 +259,18 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
       try {
         const isRunning = await toolMonitor.isToolRunning(selectedTool.iframe.port);
         if (isRunning) {
+          // Ajouter des messages spécifiques pour MAIP
+          if (selectedTool.id === 'maip') {
+            useAttackStore.getState().addPersistentOutput(tabId, `🔍 Checking MAIP services status...`);
+            useAttackStore.getState().addPersistentOutput(tabId, `✅ Found that MAIP Server is already running on port 31057`);
+            useAttackStore.getState().addPersistentOutput(tabId, `✅ Found that MAIP Client is already running on port 3001`);
+            useAttackStore.getState().addPersistentOutput(tabId, `🚀 MAIP interface is ready to use!`);
+          } else {
+            // Messages génériques pour les autres outils
+            useAttackStore.getState().addPersistentOutput(tabId, `🔍 Checking tool status...`);
+            useAttackStore.getState().addPersistentOutput(tabId, `✅ Interface already running on port ${selectedTool.iframe.port} - Ready to use!`);
+          }
+          
           updateTabState(tabId, { 
             status: 'running',
             isRunning: true,
@@ -239,9 +288,17 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
     const currentState = useAttackStore.getState().tabStates[tabId];
     const currentParams = currentState?.parameters || {};
     
-    if (selectedTool?.multiOutput?.enabled) {
+    if (selectedTool?.sequentialExecution?.enabled) {
+      // Exécution séquentielle MAIP
+      websocket.send(JSON.stringify({ 
+        type: "execute-sequential", 
+        steps: selectedTool.sequentialExecution.steps,
+        parameters: currentParams,
+        tabId 
+      }));
+    } else if (selectedTool?.multiOutput?.enabled) {
       // Exécution des commandes multiples
-      selectedTool.multiOutput.outputs.forEach(output => {
+      selectedTool.multiOutput.outputs.forEach((output: any) => {
         websocket.send(JSON.stringify({ 
           type: "execute-multi", 
           command: output.command,
@@ -360,191 +417,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
     }
   }, [tabState?.parameters]);
   
-  // 6. WebSocket event handler
+  // Vider l'output quand on change d'outil ou d'attaque
   React.useEffect(() => {
-    const handleWebSocketEvent = (data: any) => {
-      if (data.tabId && data.tabId !== tabId) return;
-      
-      // Check for fatal errors that should stop execution
-      const isFatalError = (message: string): boolean => {
-        const lowerMessage = message.toLowerCase();
-        return lowerMessage.includes('process exited with code') && !lowerMessage.includes('code 0') ||
-               lowerMessage.includes('cannot connect to the docker daemon') ||
-               lowerMessage.includes('access denied') ||
-               lowerMessage.includes('unable to find image') ||
-               lowerMessage.includes('permission denied') ||
-               lowerMessage.includes('connection refused') ||
-               lowerMessage.includes('fatal error') ||
-               lowerMessage.includes('critical error');
-      };
-      
-      switch (data.type) {
-        case "error":
-          if (data.payload) {
-            // Add output to the console for errors
-            useAttackStore.getState().addOutput(tabId, data.payload);
-            
-            // Check if it's a fatal error
-            const isFatal = isFatalError(data.payload);
-            
-            // Always update state for errors
-            updateTabState(tabId, {
-              status: isFatal ? 'error' : 'running',
-              isRunning: !isFatal,
-              loading: false,
-              iframeReady: false,
-              lockedForInteraction: !isFatal
-            });
-            
-            // Add notification for all errors
-            addNotification({
-              message: data.payload,
-              type: 'error',
-              category: 'attack',
-              title: isFatal ? 'Fatal Error - Execution Stopped' : 'Error',
-              metadata: { tabId }
-            });
-            
-            // If fatal error, send stop command
-            if (isFatal) {
-              websocket.send(JSON.stringify({ 
-                type: "stop", 
-                tabId 
-              }));
-            }
-          }
-          break;
-          
-        case "output":
-          if (data.payload) {
-            // Vérifier si c'est un output multiple
-            if (data.outputId && selectedTool?.multiOutput?.enabled) {
-              useAttackStore.getState().addMultiOutput(tabId, data.outputId, data.payload);
-              
-              // Vérifier si c'est un message de succès pour l'iframe
-              const outputConfig = selectedTool.multiOutput.outputs.find(o => o.id === data.outputId);
-              if (outputConfig?.successMessage && data.payload.includes(outputConfig.successMessage)) {
-                updateTabState(tabId, {
-                  loading: false,
-                  iframeReady: true,
-                  lockedForInteraction: true
-                });
-                
-                addNotification({
-                  message: `${outputConfig.name} is ready`,
-                  type: 'success',
-                  title: 'Success',
-                  category: 'attack'
-                });
-              }
-            } else {
-              // Output simple
-              useAttackStore.getState().addOutput(tabId, data.payload);
-              
-              // Vérifier si c'est un message de succès pour l'iframe
-              if (selectedTool?.iframe?.successMessage && data.payload.includes(selectedTool.iframe.successMessage)) {
-                updateTabState(tabId, {
-                  loading: false,
-                  iframeReady: true,
-                  lockedForInteraction: true
-                });
-                
-                addNotification({
-                  message: `${selectedTool.name} interface is ready`,
-                  type: 'success',
-                  title: 'Success',
-                  category: 'attack'
-                });
-              }
-            }
-          } else if (data.message) {
-            // Vérifier si c'est un output multiple
-            if (data.outputId && selectedTool?.multiOutput?.enabled) {
-              useAttackStore.getState().addMultiOutput(tabId, data.outputId, data.message);
-              
-              // Vérifier si c'est un message de succès pour l'iframe
-              const outputConfig = selectedTool.multiOutput.outputs.find(o => o.id === data.outputId);
-              if (outputConfig?.successMessage && data.message.includes(outputConfig.successMessage)) {
-                updateTabState(tabId, {
-                  loading: false,
-                  iframeReady: true,
-                  lockedForInteraction: true
-                });
-                
-                addNotification({
-                  message: `${outputConfig.name} is ready`,
-                  type: 'success',
-                  title: 'Success',
-                  category: 'attack'
-                });
-              }
-            } else {
-              // Output simple
-              useAttackStore.getState().addOutput(tabId, data.message);
-            
-              // Vérifier si c'est un message de succès pour l'iframe
-              if (selectedTool?.iframe?.successMessage && data.message.includes(selectedTool.iframe.successMessage)) {
-                updateTabState(tabId, {
-                  loading: false,
-                  iframeReady: true,
-                  lockedForInteraction: true
-                });
-                
-                addNotification({
-                  message: `${selectedTool.name} interface is ready`,
-                  type: 'success',
-                  title: 'Success',
-                  category: 'attack'
-                });
-              }
-            }
-          }
-          break;
-          
-        case "message":
-          // Add output to the console for general messages
-          if (data.payload) {
-            useAttackStore.getState().addOutput(tabId, data.payload);
-          } else if (data.message) {
-            useAttackStore.getState().addOutput(tabId, data.message);
-          }
-          break;
-          
-        case "notification":
-          if (data.message && selectedTool?.iframe?.successMessage) {
-            if (data.message.includes(selectedTool.iframe.successMessage)) {
-              updateTabState(tabId, {
-                loading: false,
-                iframeReady: true,
-                // Maintenir le verrouillage même si l'iframe est prêt
-                lockedForInteraction: true
-              });
-              
-              addNotification({
-                message: `${selectedTool.name} interface is ready`,
-                type: 'success',
-                category: 'attack',
-                title: 'Success',
-                metadata: { tabId }
-              });
-            }
-          }
-          break;
-      }
-    };
-
-    websocket.on("message", handleWebSocketEvent);
-    websocket.on("error", handleWebSocketEvent);
-    websocket.on("output", handleWebSocketEvent);
-    websocket.on("notification", handleWebSocketEvent);
-    
-    return () => {
-      websocket.off("message", handleWebSocketEvent);
-      websocket.off("error", handleWebSocketEvent);
-      websocket.off("output", handleWebSocketEvent);
-      websocket.off("notification", handleWebSocketEvent);
-    };
-  }, [tabId, selectedTool, updateTabState, addNotification]);
+    console.log(`🧹 ConfigPanel: Tool or attack changed for tab ${tabId}, clearing outputs`);
+    useAttackStore.getState().clearOutput(tabId);
+    useAttackStore.getState().clearOutputCache(tabId);
+  }, [selectedTool?.id, selectedAttack?.id, tabId]);
 
   // Monitor tool state
   React.useEffect(() => {
@@ -764,8 +642,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
               onClick={executeAttack}
               className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition-colors ${
                 isActionDisabled
-                  ? 'bg-gray-500 cursor-not-allowed'
-                  : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                  ? theme === 'light' 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-500 cursor-not-allowed'
+                  : theme === 'light'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    : 'bg-indigo-500 hover:bg-indigo-600 text-white'
               }`}
               disabled={isActionDisabled}
             >
@@ -797,101 +679,69 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
         </div>
       </div>
       
-      {/* Parameters or Iframe - HAUTEUR CALCULÉE FIXE */}
+      {/* Parameters - HAUTEUR CALCULÉE FIXE */}
       <div 
         className={`flex-1 p-3 overflow-hidden ${
         theme === 'light' ? 'bg-gray-50' : 'bg-gray-900/50'
         }`}
         style={{ height: 'calc(100% - 224px)' }}
       >
-        {selectedTool.iframe && isLoading && !isIframeReady ? (
-          <div className="h-full flex flex-col items-center justify-center">
-            <div className="w-12 h-12 border-4 border-t-transparent border-indigo-500 rounded-full animate-spin"></div>
-          </div>
-        ) : selectedTool.iframe && (isIframeReady || isRunning) ? (
-          <div className="h-full relative">
-            <iframe
-              ref={iframeRef}
-              src={`http://localhost:${selectedTool.iframe.port}`}
-              className="w-full h-full border-none"
-              title={selectedTool.name}
-            />
-            <button
-              onClick={handleFullscreen}
-              className={`absolute top-2 right-2 p-2 rounded border transition-all duration-200 ${
-                isFullscreen 
-                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-500' 
-                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600'
-              }`}
-              title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}
-            >
-              {isFullscreen ? (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <ArrowsExpand className="h-5 w-5" />
-              )}
-            </button>
+        {/* Utiliser les paramètres de l'attaque sélectionnée si disponibles, sinon utiliser ceux de l'outil */}
+        {(selectedAttack?.parameters && Object.keys(selectedAttack.parameters).length > 0) || 
+        (selectedTool.parameters && Object.keys(selectedTool.parameters).length > 0) ? (
+          <div className="h-full overflow-y-auto">
+            {/* Configuration form */}
+            <div className={`grid grid-cols-1 gap-3 p-2 ${isLocked ? 'opacity-70 pointer-events-none' : ''}`}>
+              {Object.entries(selectedAttack?.parameters || selectedTool.parameters || {}).map(([key, paramValue]) => {
+                // Conversion explicite pour satisfaire TypeScript
+                const param = paramValue as ToolParameter;
+                
+                return (
+                  <div key={key} className="space-y-1">
+                    <label className="flex items-center justify-between">
+                      <span className={`block text-xs font-medium ${
+                        theme === 'light' 
+                          ? 'text-gray-700' 
+                          : 'text-gray-200'
+                      }`}>
+                        {param.label}
+                      </span>
+                      {param.required && (
+                        <span className="text-xs text-red-500">Required</span>
+                      )}
+                    </label>
+                    <input
+                      type={param.type === 'number' ? 'number' : 'text'}
+                      className={`w-full px-2 py-1.5 rounded-lg border text-sm ${
+                        theme === 'light'
+                          ? 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500/20'
+                          : 'border-2 border-gray-700 bg-gray-800/50 text-gray-200 placeholder-gray-500 focus:border-indigo-500 focus:ring focus:ring-indigo-500/20'
+                      }`}
+                      placeholder={param.description}
+                      value={params[key] || param.default || ''}
+                      onChange={(e) => handleParameterChange(key, e.target.value)}
+                      disabled={isLocked}
+                    />
+                    {param.description && (
+                      <p className={`text-xs ${
+                        theme === 'light' 
+                          ? 'text-gray-500' 
+                          : 'text-gray-400'
+                      }`}>
+                        {param.description}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
-          // Utiliser les paramètres de l'attaque sélectionnée si disponibles, sinon utiliser ceux de l'outil
-          (selectedAttack?.parameters && Object.keys(selectedAttack.parameters).length > 0) || 
-          (selectedTool.parameters && Object.keys(selectedTool.parameters).length > 0) ? (
-            <div className="h-full overflow-y-auto">
-              {/* Configuration form */}
-              <div className={`grid grid-cols-1 gap-3 p-2 ${isLocked ? 'opacity-70 pointer-events-none' : ''}`}>
-                {Object.entries(selectedAttack?.parameters || selectedTool.parameters || {}).map(([key, paramValue]) => {
-                  // Conversion explicite pour satisfaire TypeScript
-                  const param = paramValue as ToolParameter;
-                  
-                  return (
-                    <div key={key} className="space-y-1">
-                      <label className="flex items-center justify-between">
-                        <span className={`block text-xs font-medium ${
-                          theme === 'light' 
-                            ? 'text-gray-700' 
-                            : 'text-gray-200'
-                        }`}>
-                          {param.label}
-                        </span>
-                        {param.required && (
-                          <span className="text-xs text-red-500">Required</span>
-                        )}
-                      </label>
-                      <input
-                        type={param.type === 'number' ? 'number' : 'text'}
-                        className={`w-full px-2 py-1.5 rounded-lg border text-sm ${
-                          theme === 'light'
-                            ? 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500/20'
-                            : 'border-2 border-gray-700 bg-gray-800/50 text-gray-200 placeholder-gray-500 focus:border-indigo-500 focus:ring focus:ring-indigo-500/20'
-                        }`}
-                        placeholder={param.description}
-                        value={params[key] || param.default || ''}
-                        onChange={(e) => handleParameterChange(key, e.target.value)}
-                        disabled={isLocked}
-                      />
-                      {param.description && (
-                        <p className={`text-xs ${
-                          theme === 'light' 
-                            ? 'text-gray-500' 
-                            : 'text-gray-400'
-                        }`}>
-                          {param.description}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <p className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
-                No parameters needed for this attack.
-              </p>
-            </div>
-          )
+          <div className="h-full flex items-center justify-center">
+            <p className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
+              No parameters needed for this attack.
+            </p>
+          </div>
         )}
       </div>
     </div>

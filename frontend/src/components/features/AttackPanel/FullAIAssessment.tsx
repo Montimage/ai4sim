@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  PlayIcon, 
+  StopIcon, 
+  CpuChipIcon, 
+  CommandLineIcon,
+  InformationCircleIcon
+} from '@heroicons/react/24/outline';
 import { useAttackStore } from '../../../store/attackStore';
 import { websocket } from '../../../services/websocket';
-import { 
-  CpuChipIcon, 
-  PlayIcon, 
-  StopIcon,
-  Cog6ToothIcon,
-  InformationCircleIcon,
-  CommandLineIcon
-} from '@heroicons/react/24/outline';
 
 interface FullAIAssessmentProps {
   tabId: string;
@@ -68,7 +67,7 @@ const colorizeOutput = (text: string): { text: string; className: string } => {
 };
 
 export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => {
-  const { getTabState, updateTabState, addOutput } = useAttackStore();
+  const { getTabState, updateTabState } = useAttackStore();
   
   // Supprimer la référence au scénario actuel car l'onglet Attacks ne devrait pas être lié aux scénarios
   const [target, setTarget] = useState('172.17.0.2');
@@ -78,8 +77,6 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
   const tabState = getTabState(tabId);
   // L'état isRunning est maintenant géré dans le store global
   const isRunning = tabState?.isRunning || false;
-
-  // Supprimer l'effet qui met à jour la target depuis le scénario
 
   useEffect(() => {
     // Configurer automatiquement Shennina pour ce tab
@@ -95,73 +92,13 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
     });
   }, [tabId, target, lhost, mode, updateTabState]);
 
-  // Gestion des messages WebSocket - continue même si on change d'onglet
-  useEffect(() => {
-    const handleWebSocketEvent = (data: any) => {
-      console.log('[FullAIAssessment] WebSocket message:', data);
-      
-      // Vérifier si le message est pour ce tab
-      if (data.tabId !== tabId) return;
-
-      switch (data.type) {
-        case "output":
-          if (data.payload) {
-            console.log('[FullAIAssessment] Adding output:', data.payload);
-            addOutput(tabId, data.payload);
-            
-            // Détecter si Shennina a terminé avec succès
-            if (data.payload.toLowerCase().includes('process completed successfully') ||
-                data.payload.toLowerCase().includes('assessment completed') ||
-                data.payload.toLowerCase().includes('shennina completed') ||
-                data.payload.toLowerCase().includes('execution finished') ||
-                data.payload.toLowerCase().includes('all tasks completed')) {
-              console.log('[FullAIAssessment] Shennina process completed successfully, stopping assessment');
-              addOutput(tabId, '✅ Shennina assessment completed successfully');
-              addOutput(tabId, '🛑 Stopping assessment automatically...');
-              updateTabState(tabId, {
-                isRunning: false,
-                status: 'completed'
-              });
-            }
-          }
-          break;
-          
-        case "error":
-          if (data.payload) {
-            console.log('[FullAIAssessment] Adding error:', data.payload);
-            addOutput(tabId, `❌ Error: ${data.payload}`);
-          }
-          updateTabState(tabId, {
-            isRunning: false,
-            status: 'error'
-          });
-          break;
-          
-        case "complete":
-          console.log('[FullAIAssessment] Process completed');
-          addOutput(tabId, '✅ Assessment completed successfully');
-          updateTabState(tabId, {
-            isRunning: false,
-            status: 'completed'
-          });
-          break;
-      }
-    };
-
-    websocket.on("message", handleWebSocketEvent);
-    websocket.on("error", handleWebSocketEvent);
-    websocket.on("output", handleWebSocketEvent);
-    websocket.on("complete", handleWebSocketEvent);
-    
-    return () => {
-      websocket.off("message", handleWebSocketEvent);
-      websocket.off("error", handleWebSocketEvent);
-      websocket.off("output", handleWebSocketEvent);
-      websocket.off("complete", handleWebSocketEvent);
-    };
-  }, [tabId, addOutput, updateTabState]);
+  // WebSocket events are now handled globally by GlobalWebSocketHandler
+  // No need for component-specific WebSocket handling to avoid duplication
 
   const handleStartAssessment = async () => {
+    // Forcer le mode exploitation lors du lancement Full AI Assessment
+    setMode('exploitation');
+    const effectiveMode = 'exploitation';
     // Mettre à jour l'état global pour indiquer que l'assessment est en cours
     updateTabState(tabId, {
       output: [],
@@ -169,23 +106,18 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
       status: 'running'
     });
 
-    // Ajouter des messages de démarrage colorés
-    addOutput(tabId, `🚀 Starting Shennina AI Assessment...`);
-    addOutput(tabId, `🎯 Target: ${target}`);
-    addOutput(tabId, `🏠 LHOST: ${lhost}`);
-    addOutput(tabId, `⚙️ Mode: ${mode}`);
-    addOutput(tabId, `📡 Connecting to target...`);
-    addOutput(tabId, `🔍 Initializing vulnerability scanner...`);
+    // Les messages seront envoyés automatiquement par le backend via WebSocket
+    // Pas besoin d'ajouter des messages manuellement ici pour éviter la duplication
     
     try {
       // Utiliser le service WebSocket pour exécuter l'attaque
       websocket.send(JSON.stringify({
         type: 'execute',
-        command: `python3 /home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/shennina/shennina_standalone.py --target ${target} --lhost ${lhost} --mode ${mode}`,
+        command: `cd tools/shennina && python3 shennina_standalone.py --target ${target} --lhost ${lhost} --mode ${effectiveMode}`,
         parameters: {
           target,
           lhost,
-          mode
+          mode: effectiveMode
         },
         tabId: tabId
       }));
@@ -193,7 +125,7 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
       console.log('[FullAIAssessment] Command sent via WebSocket');
     } catch (error) {
       console.error('Error starting AI assessment:', error);
-      addOutput(tabId, `❌ Error starting assessment: ${error}`);
+      // Error messages will be handled by GlobalWebSocketHandler
       updateTabState(tabId, {
         isRunning: false,
         status: 'error'
@@ -208,7 +140,7 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
       tabId: tabId
     }));
 
-    addOutput(tabId, '🛑 Stopping assessment...');
+    // Stop messages will be handled by GlobalWebSocketHandler
     updateTabState(tabId, {
       isRunning: false,
       status: 'stopped'
@@ -236,7 +168,7 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
                 <div className="flex items-center space-x-2 mt-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                    Running in background
+                    Assessment in progress
                   </span>
                 </div>
               )}
@@ -304,7 +236,6 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
                     <li>• AI-driven attack path discovery</li>
                     <li>• Real-time threat simulation</li>
                     <li>• Comprehensive security assessment</li>
-                    <li>• <strong>Continues running when switching tabs</strong></li>
                   </ul>
                 </div>
               </div>
@@ -329,21 +260,6 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
                   <span>Stop Assessment</span>
                 </button>
               )}
-
-              <button
-                onClick={() => {
-                  // Basculer vers la vue de configuration manuelle
-                  updateTabState(tabId, {
-                    selectedCategory: 'ALL',
-                    selectedTool: undefined,
-                    selectedAttack: undefined
-                  });
-                }}
-                className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-              >
-                <Cog6ToothIcon className="h-5 w-5" />
-                <span>Manual Configuration</span>
-              </button>
             </div>
           </div>
         </div>

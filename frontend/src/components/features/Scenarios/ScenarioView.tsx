@@ -54,7 +54,7 @@ const ScenarioView: React.FC = () => {
     loadScenario();
   }, [projectId, campaignId, scenarioId, loadScenarioById]);
 
-  const handleSave = async (updates: Partial<Scenario>) => {
+  const handleSave = async (updates: Partial<Scenario> | any) => {
     if (!scenarioId || !projectId || !campaignId) return;
     
     try {
@@ -151,7 +151,7 @@ const ScenarioView: React.FC = () => {
                 <ScenarioAttacks 
                   scenario={scenario}
                   onSave={async (attacks) => {
-                    await handleSave({ attacks });
+                    await handleSave({ attacks } as any);
                   }}
                 />
               </Tab.Panel>

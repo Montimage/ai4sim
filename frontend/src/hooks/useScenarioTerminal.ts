@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useWebSocket } from './useWebSocket';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { websocket } from '../services/websocket';
 import { executionHistoryService } from '../services/executionHistoryService';
+// Logger will be used in future updates for replacing console.log statements
 
 /**
  * Type for a terminal output line
@@ -91,7 +91,8 @@ const clearStorage = (scenarioId: string) => {
 };
 
 /**
- * Hook personnalisé pour gérer le terminal d'un scénario
+ * Custom hook for managing scenario execution and terminal output.
+ * Handles WebSocket communication, execution state, and output display.
  */
 export const useScenarioTerminal = (scenarioId: string) => {
   // Initialize state from localStorage
@@ -100,15 +101,12 @@ export const useScenarioTerminal = (scenarioId: string) => {
     loadFromStorage(scenarioId, 'attackOutputs') as Record<string, OutputLine[]>
   );
   const [attackTools] = useState<{id: string, tool: string}[]>([]);
-  const [recentMessages, setRecentMessages] = useState<Set<string>>(new Set());
-  const [globalMessageTracker, setGlobalMessageTracker] = useState<Set<string>>(new Set());
   const [displayedErrorMessages, setDisplayedErrorMessages] = useState<Set<string>>(new Set());
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(() => 
     loadFromStorage(scenarioId, 'executionId') as string | null
   );
-  const { isConnected, addListener } = useWebSocket({
-    autoConnect: true
-  });
+  // WebSocket connection status - will be managed by websocket service
+  const isConnected = true; // Temporarily set to true
   
   // Reference to avoid multiple subscriptions
   const subscriptionSent = useRef(false);
@@ -187,112 +185,72 @@ export const useScenarioTerminal = (scenarioId: string) => {
     attackId?: string
   ) => {
     if (!content || content.trim() === '') return;
-    
-    // Normalize content for deduplication
-    const normalizedContent = content.trim().toLowerCase();
-    
-    // For global messages, use more aggressive deduplication (but still include timestamp for uniqueness)
-    if (!attackId) {
-      // For global messages, use content-based deduplication with a shorter window
-      const globalKey = `global-${normalizedContent}-${type}`;
-      if (globalMessageTracker.has(globalKey)) {
-        return; // Ignore duplicate global message
-      }
-      
-      setGlobalMessageTracker(prev => {
-        const updated = new Set(prev);
-        updated.add(globalKey);
-        
-        // Clean up old messages after 10 seconds for global tracker (shorter window)
-        setTimeout(() => {
-          setGlobalMessageTracker(current => {
-            const cleaned = new Set(current);
-            cleaned.delete(globalKey);
-            return cleaned;
-          });
-        }, 10000);
-        
-        return updated;
-      });
-    } else {
-      // For attack-specific messages, use attack-specific deduplication
-      const attackKey = `${attackId}-${normalizedContent}-${type}`;
-      if (recentMessages.has(attackKey)) {
-        return; // Ignore duplicate attack message
-      }
-      
-      setRecentMessages(prev => {
-        const updated = new Set(prev);
-        updated.add(attackKey);
-        
-        // Clean up old messages after 3 seconds for attack messages (shorter window)
-        setTimeout(() => {
-          setRecentMessages(current => {
-            const cleaned = new Set(current);
-            cleaned.delete(attackKey);
-            return cleaned;
-          });
-        }, 3000);
-        
-        return updated;
-      });
-    }
-    
-    // Ajouter le message à la file d'attente
-    messageQueueRef.current.push({ content, type, attackId });
-    
-    // Save to execution history if we have an active execution
-    if (currentExecutionId) {
-      const outputLine = {
-        content,
+
+    // Split le contenu sur les retours à la ligne
+    const lines = content.split('\n');
+    lines.forEach((line) => {
+      if (line.trim() === '') return;
+      // Add detailed tracing for output generation
+      console.log(`📝 [ScenarioTerminal-OUTPUT] Adding output:`, {
+        content: line.substring(0, 100),
         type,
-        timestamp: new Date()
-      };
-      
-      if (attackId) {
-        // TOUJOURS sauvegarder dans l'attaque spécifique pour l'historique
-        // même en mode séquentiel, pour avoir un format uniforme
-        executionHistoryService.addAttackOutputLine(currentExecutionId, attackId, outputLine.content, outputLine.type);
-      } else {
-        // Save to global execution output
-        executionHistoryService.addOutputLine(currentExecutionId, outputLine.content, outputLine.type);
+        attackId,
+        scenarioId,
+        instance: instanceId.current,
+        stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
+      });
+      // Ajouter chaque ligne à la file d'attente
+      messageQueueRef.current.push({ content: line, type, attackId });
+
+      // Save to execution history si on a une exécution active
+      if (currentExecutionId) {
+        const outputLine = {
+          content: line,
+          type,
+          timestamp: new Date()
+        };
+        if (attackId) {
+          executionHistoryService.addAttackOutputLine(currentExecutionId, attackId, outputLine.content, outputLine.type);
+        } else {
+          executionHistoryService.addOutputLine(currentExecutionId, outputLine.content, outputLine.type);
+        }
       }
-    }
-    
+    });
+
     // Si un timer est déjà en cours, ne pas en créer un nouveau
     if (messageTimerRef.current) return;
-    
+
     // Créer un timer pour traiter les messages par lots
     messageTimerRef.current = setTimeout(() => {
       const messages = [...messageQueueRef.current];
       messageQueueRef.current = [];
       messageTimerRef.current = null;
-      
+
       // Pour l'affichage dans l'interface : TOUT va dans l'output global
       // (mode séquentiel unifié)
-      const allMessages = messages.map(msg => ({ 
-        content: msg.content, 
+      const allMessages = messages.map(msg => ({
+        content: msg.content,
         type: msg.type as 'info' | 'error' | 'warning' | 'success',
         timestamp: new Date()
       }));
-      
+
       if (allMessages.length > 0) {
         setOutput(prev => [...prev, ...allMessages]);
       }
-      
+
       // Pour l'historique : sauvegarder aussi dans attackOutputs pour compatibilité
       // avec les rapports et l'historique détaillé
       const attackMessages = messages.filter(msg => msg.attackId);
       if (attackMessages.length > 0) {
         const updatesByAttackId: Record<string, Array<OutputLine>> = {};
-        
+
         attackMessages.forEach(msg => {
           if (!msg.attackId) return;
-          
+
           if (!updatesByAttackId[msg.attackId]) {
             updatesByAttackId[msg.attackId] = [];
           }
-          
+
           updatesByAttackId[msg.attackId].push({
             content: msg.content,
             type: msg.type as 'info' | 'error' | 'warning' | 'success',
@@ -300,15 +258,15 @@ export const useScenarioTerminal = (scenarioId: string) => {
             attackId: msg.attackId
           });
         });
-        
+
         // Mettre à jour attackOutputs pour l'historique et les rapports
         setAttackOutputs(prev => {
           const newOutputs = { ...prev };
-          
+
           Object.entries(updatesByAttackId).forEach(([id, msgs]) => {
             newOutputs[id] = [...(newOutputs[id] || []), ...msgs];
           });
-          
+
           return newOutputs;
         });
       }
@@ -521,6 +479,7 @@ export const useScenarioTerminal = (scenarioId: string) => {
 
   // Nettoyer les écouteurs existants
   const cleanupListeners = useCallback(() => {
+    // Clean up any remaining active listeners
     while (activeListeners.current.length > 0) {
       const cleanup = activeListeners.current.pop();
       if (cleanup) cleanup();
@@ -529,13 +488,59 @@ export const useScenarioTerminal = (scenarioId: string) => {
 
   // Gestionnaire générique pour tous les messages - stable avec useCallback
   const handleGenericMessage = useCallback((data: any) => {
-    // Identifier si le message concerne ce scénario
-    const messageScenarioId = data.scenarioId || (data.data && data.data.scenarioId);
-    if (messageScenarioId && messageScenarioId !== scenarioId) {
-      return; // Ignorer les messages pour d'autres scénarios
+    const dataScenarioId = data.scenarioId || (data.data && data.data.scenarioId);
+    const attackId = data.data?.attackId || data.data?.data?.attackId;
+    const output = data.data?.output || data.data?.data?.output || data.payload || data.message;
+    const messageType = data.type;
+    
+    // Detailed tracing to understand message origins and flow
+    console.log(`🔍 [ScenarioTerminal-RAW] Received message:`, {
+      hookInstance: instanceId.current,
+      isActive: isActiveInstance.current,
+      messageType,
+      dataScenarioId,
+      targetScenarioId: scenarioId,
+      attackId,
+      hasOutput: !!output,
+      outputLength: output?.length || 0,
+      outputPreview: typeof output === 'string' ? output.substring(0, 100) : (output ? JSON.stringify(output).substring(0, 100) : 'no output'),
+      timestamp: data.timestamp || data.data?.timestamp,
+      fullMessage: data,
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' -> ')
+    });
+
+    // Check if instance is still active
+    if (!isActiveInstance.current) {
+      console.log(`❌ [ScenarioTerminal] Message ignored - instance ${instanceId.current} is deactivated`);
+      return;
     }
 
-    console.log(`📨 [ScenarioTerminal] Processing message for scenario ${scenarioId}:`, data);
+    // Identifier si le message concerne ce scénario
+    if (dataScenarioId && dataScenarioId !== scenarioId) {
+      console.log(`🎯 [ScenarioTerminal] Message for different scenario (${dataScenarioId} vs ${scenarioId}) - ignoring`);
+      return;
+    }
+
+    console.log(`✅ [ScenarioTerminal] Processing message for scenario ${scenarioId}:`, {
+      type: messageType,
+      attackId,
+      outputLength: output?.length || 0,
+      instance: instanceId.current
+    });
+
+    // Traitement prioritaire des messages d'erreur directs dans scenario-update
+    if (data.type === 'scenario-update' && data.error && data.attackId) {
+      const attackId = data.attackId;
+      const attackMatch = attackId?.match(/(\d+)$/);
+      const attackNum = attackMatch ? attackMatch[1] : attackId;
+      
+      // Afficher l'erreur immédiatement
+      const errorMessage = data.error;
+      appendOutput(`❌ Attack ${attackNum} failed: ${errorMessage}`, 'error');
+      
+      console.log(`🚨 [ScenarioTerminal] Direct error for attack ${attackNum}:`, errorMessage);
+      return;
+    }
 
     // Traitement de tous les types de messages pertinents
     if (data.type === 'scenario-update' && data.data?.type === 'terminal-output') {
@@ -625,6 +630,20 @@ export const useScenarioTerminal = (scenarioId: string) => {
         const normalizedAttackId = attackMatch ? `attack-${attackMatch[1]}` : attackId;
         appendOutput(errorMessage, 'error', normalizedAttackId);
       }
+    // Traitement des messages de status d'attaque avec erreur directe
+    } else if (data.type === 'scenario-update' && data.status === 'failed' && data.attackId && data.error) {
+      const attackId = data.attackId;
+      const attackMatch = attackId?.match(/(\d+)$/);
+      const attackNum = attackMatch ? attackMatch[1] : attackId;
+      
+      // Afficher l'erreur directement
+      const errorMessage = data.error;
+      appendOutput(`❌ Attack ${attackNum} failed: ${errorMessage}`, 'error');
+      updateAttackStatus(attackId, 'failed');
+      
+      console.log(`🚨 [ScenarioTerminal] Attack ${attackNum} failed with error:`, errorMessage);
+      return;
+      
     } else if (data.data?.type === 'terminal-status' && data.data?.status) {
       const attackId = data.data.attackId || data.data.terminalId;
       const attackMatch = attackId?.match(/(\d+)$/);
@@ -931,32 +950,82 @@ export const useScenarioTerminal = (scenarioId: string) => {
     }
   }, [scenarioId, appendOutput, attackOutputs, extractErrorCode]);
 
+  // Global tracker to prevent multiple instances of the hook for the same scenario
+  const instanceId = useRef(`${scenarioId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  const isActiveInstance = useRef(true);
+  
+  // Reset instance ID and ensure active state when scenario changes
+  useEffect(() => {
+    if (scenarioId) {
+      instanceId.current = `${scenarioId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      isActiveInstance.current = true;
+      console.log(`🆕 [ScenarioTerminal] New instance created for scenario ${scenarioId}: ${instanceId.current}`);
+    }
+  }, [scenarioId]);
+  
+  // Only deactivate on actual component unmount (when scenarioId becomes null/undefined)
+  useEffect(() => {
+    return () => {
+      if (!scenarioId) {
+        isActiveInstance.current = false;
+        console.log(`🔚 [ScenarioTerminal] Instance ${instanceId.current} deactivated on unmount`);
+      }
+    };
+  }, [scenarioId]);
+  
   // S'abonner aux événements du scénario
   useEffect(() => {
-    if (!scenarioId || !isConnected) return;
+    console.log(`🔍 [ScenarioTerminal-EFFECT] Effect triggered:`, {
+      scenarioId: !!scenarioId,
+      isConnected,
+      isActiveInstance: isActiveInstance.current,
+      instanceId: instanceId.current,
+      shouldRegisterListener: !!(scenarioId && isConnected && isActiveInstance.current)
+    });
+    
+    if (!scenarioId || !isConnected || !isActiveInstance.current) {
+      console.log(`❌ [ScenarioTerminal-EFFECT] Conditions not met - not registering listener:`, {
+        hasScenarioId: !!scenarioId,
+        isConnected,
+        isActiveInstance: isActiveInstance.current
+      });
+      return;
+    }
 
     // Nettoyer les écouteurs existants avant d'en ajouter de nouveaux
     cleanupListeners();
 
-    // Écouter plusieurs types de messages possibles
-    const removeScenarioUpdateListener = addListener('scenario-update', handleGenericMessage);
-    const removeTerminalOutputListener = addListener('terminal-output', handleGenericMessage);
-    const removeTerminalErrorListener = addListener('terminal-error', handleGenericMessage);
-    const removeAttackOutputListener = addListener('attack-output', handleGenericMessage);
-    const removeAttackStatusListener = addListener('attack-status', handleGenericMessage);
+    // Wrapper function to trace all scenario-update events
+    const tracedHandler = (data: any) => {
+      console.log(`🎯 [ScenarioTerminal-LISTENER] scenario-update event received:`, {
+        eventType: 'scenario-update',
+        instance: instanceId.current,
+        isActive: isActiveInstance.current,
+        scenarioId,
+        messageScenarioId: data.scenarioId || (data.data && data.data.scenarioId),
+        messageType: data.type,
+        hasData: !!data.data,
+        hasOutput: !!(data.data?.output || data.data?.data?.output),
+        timestamp: Date.now(),
+        stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' -> ')
+      });
+      
+      handleGenericMessage(data);
+    };
+
+    // Listen only to scenario-update to avoid duplication
+    websocket.on('scenario-update', tracedHandler);
     
-    activeListeners.current.push(
-      removeScenarioUpdateListener,
-      removeTerminalOutputListener, 
-      removeTerminalErrorListener,
-      removeAttackOutputListener,
-      removeAttackStatusListener
-    );
+    console.log(`🎧 [ScenarioTerminal] Set up WebSocket listener for scenario ${scenarioId} (instance: ${instanceId.current})`);
+    console.log(`📊 [ScenarioTerminal] WebSocket listener registered for 'scenario-update'`);
 
     return () => {
+      // Clean up this specific listener
+      websocket.off('scenario-update', tracedHandler);
       cleanupListeners();
+      console.log(`🧹 [ScenarioTerminal] Cleaned up WebSocket listener for scenario ${scenarioId} (instance: ${instanceId.current})`);
     };
-  }, [scenarioId, isConnected, cleanupListeners, handleGenericMessage, addListener]); // Dépendances stables
+  }, [scenarioId, isConnected, cleanupListeners, handleGenericMessage]); // Dépendances stables
 
   // S'abonner au scénario - séparé de l'ajout des listeners
   useEffect(() => {
@@ -1009,10 +1078,9 @@ export const useScenarioTerminal = (scenarioId: string) => {
 
   // Clear terminal function that also clears localStorage
   const clearTerminal = useCallback(() => {
+    console.log(`🧹 [ScenarioTerminal] Clearing terminal for scenario ${scenarioId} (instance: ${instanceId.current})`);
     setOutput([]);
     setAttackOutputs({});
-    setRecentMessages(new Set());
-    setGlobalMessageTracker(new Set());
     clearStorage(scenarioId);
   }, [scenarioId]);
 

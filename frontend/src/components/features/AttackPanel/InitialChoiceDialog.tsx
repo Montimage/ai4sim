@@ -32,7 +32,7 @@ export const InitialChoiceDialog: React.FC<InitialChoiceDialogProps> = ({ onChoi
     {
       id: 'import-config' as const,
       title: 'Import Configuration',
-      description: 'Load an existing configuration file',
+      description: 'Load from an existing configuration file',
       icon: DocumentArrowUpIcon,
       color: 'from-green-600 to-emerald-600',
       hoverColor: 'from-green-700 to-emerald-700'

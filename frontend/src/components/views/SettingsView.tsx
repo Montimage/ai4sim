@@ -408,24 +408,6 @@ const SettingsView: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Wazuh Integration</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Enable Wazuh security monitoring</p>
-                  </div>
-                  <button
-                    onClick={() => handleSecuritySettingChange('wazuhEnabled', !securitySettings.wazuhEnabled)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      securitySettings.wazuhEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        securitySettings.wazuhEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
               </div>
             </Card>
 

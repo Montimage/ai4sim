@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -16,6 +17,12 @@ import userRoutes from './routes/users';
 import { WebSocketManager } from './websocket/WebSocketManager';
 import { Scenario, AttackStatus } from './models/Scenario';
 import { ProcessManager } from './services/ProcessManager';
+import { initSuperAdmin } from './scripts/initSuperAdmin';
+
+// Charger les variables d'environnement depuis le fichier .env
+dotenv.config();
+
+// Ne PAS importer les services ici - ils seront importés dans startServer après l'initialisation de WebSocketManager
 
 // Désactiver l'avertissement de dépréciation pour punycode
 process.removeAllListeners('warning');
@@ -213,6 +220,16 @@ const startServer = async () => {
     // Nettoyer les scénarios en cours au démarrage
     await cleanupRunningScenarios();
     
+    // Initialiser le super admin au démarrage
+    await initSuperAdmin();
+    
+    // Importer les routes après l'initialisation de WebSocketManager
+    const pentestRoutes = await import('./routes/pentestRoutes');
+    const agentRoutes = await import('./routes/agentRoutes');
+    const executionRoutes = await import('./routes/executions');
+    const projectManagementRoutes = await import('./routes/projectManagement');
+    const scenarioRoutes = await import('./routes/scenarios');
+    
     // Initialize controllers after WebSocket Manager is ready
     const authController = new AuthController();
     const configController = new ConfigController();
@@ -269,8 +286,49 @@ const startServer = async () => {
     // User management routes
     app.use('/api/users', userRoutes);
 
-    // Protected routes
-    app.use('/api', authMiddleware);
+    // Mount routes après l'initialisation de WebSocketManager - utiliser .default pour les imports dynamiques
+    app.use('/api/pentest', pentestRoutes.default);
+    logger.info('✅ Pentest routes mounted successfully');
+    
+    app.use('/api/agents', agentRoutes.default);
+    logger.info('✅ Agent routes mounted successfully');
+    
+    app.use('/api/executions', executionRoutes.default);
+    logger.info('✅ Execution routes mounted successfully');
+    
+    app.use('/api', projectManagementRoutes.default);
+    logger.info('✅ Project management routes mounted successfully');
+    
+    app.use('/api', scenarioRoutes.default);
+    logger.info('✅ Scenario routes mounted successfully');
+
+    // Public pentest health endpoint - define explicitly before auth middleware
+    app.get('/api/pentest/health', async (_req, res) => {
+      try {
+        res.json({
+          success: true,
+          service: 'Pentest Orchestrator',
+          status: 'healthy',
+          timestamp: new Date(),
+          version: '2.0.0'
+        });
+      } catch (error: any) {
+        res.status(500).json({
+          success: false,
+          error: 'Service indisponible',
+          details: error.message
+        });
+      }
+    });
+
+    // Protected routes (apply auth middleware to specific routes that need it)
+    // Note: Routes that have their own auth handling are not affected
+    app.use('/api/configs*', authMiddleware);
+    app.use('/api/attacks*', authMiddleware);
+    app.use('/api/system*', authMiddleware);
+    app.use('/api/projects*', authMiddleware);
+    app.use('/api/process-status*', authMiddleware);
+    app.use('/api/scenarios/:scenarioId/force-completion-check', authMiddleware);
 
     // Routes pour les configurations
     app.get('/api/configs', configController.getUserConfigs);
@@ -303,16 +361,6 @@ const startServer = async () => {
 
     // Routes for campaigns - mount on the correct project-related path
     app.use('/api/projects/:projectId/campaigns', campaignRoutes);
-
-    // Execution routes
-    import('./routes/executions').then(({ default: executionRoutes }) => {
-      app.use('/api/executions', executionRoutes);
-    });
-
-    // Import projectManagement routes for all other API paths
-    import('./routes/projectManagement').then(({ default: projectManagementRoutes }) => {
-      app.use('/api', projectManagementRoutes);
-    });
     
     // Process status endpoints - for checking if processes are actually running
     app.get('/api/process-status/:processId', async (req, res) => {
@@ -333,8 +381,34 @@ const startServer = async () => {
       } catch (error) {
         logger.error('Error checking process status:', error);
         return res.status(500).json({
-          error: 'Failed to check process status',
+          error: 'Internal server error',
           isRunning: false
+        });
+      }
+    });
+
+    // Force scenario completion check endpoint
+    app.post('/api/scenarios/:scenarioId/force-completion-check', authMiddleware, async (req, res) => {
+      try {
+        const { scenarioId } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(scenarioId)) {
+          return res.status(400).json({ error: 'Invalid scenario ID format' });
+        }
+        
+        const processManager = ProcessManager.getInstance();
+        await processManager.forceScenarioCompletionCheck(scenarioId);
+        
+        return res.json({
+          success: true,
+          message: 'Scenario completion check forced',
+          scenarioId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error forcing scenario completion check:', error);
+        return res.status(500).json({
+          error: 'Failed to force scenario completion check'
         });
       }
     });
@@ -388,3 +462,52 @@ process.on("uncaughtException", (error) => {
 process.on("unhandledRejection", (error) => {
   logger.error("Unhandled Rejection:", error);
 });
+
+// Improved shutdown handling
+let isShuttingDown = false;
+
+const gracefulShutdown = (signal: string) => {
+  if (isShuttingDown) {
+    logger.warn(`${signal} received again, forcing exit...`);
+    process.exit(1);
+  }
+  
+  isShuttingDown = true;
+  logger.info(`${signal} received, starting graceful shutdown...`);
+  
+  // Set a timeout to force exit if graceful shutdown takes too long
+  const forceExitTimeout = setTimeout(() => {
+    logger.error('Graceful shutdown timeout, forcing exit...');
+    process.exit(1);
+  }, 5000); // 5 seconds timeout
+  
+  // Close server
+  server.close(async (err) => {
+    if (err) {
+      logger.error('Error during server shutdown:', err);
+    } else {
+      logger.info('Server closed successfully');
+    }
+    
+    // Close MongoDB connection
+    try {
+      await mongoose.connection.close();
+      logger.info('MongoDB connection closed');
+    } catch (mongoErr) {
+      logger.error('Error closing MongoDB connection:', mongoErr);
+    }
+    
+    clearTimeout(forceExitTimeout);
+    process.exit(0);
+  });
+};
+
+// Handle different shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // For nodemon
+
+// Handle Windows specific signals
+if (process.platform === 'win32') {
+  process.on('SIGBREAK', () => gracefulShutdown('SIGBREAK'));
+}

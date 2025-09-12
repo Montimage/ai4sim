@@ -9,11 +9,11 @@ export const config = {
         host: process.env.HOST || "localhost"
     },
     security: {
-        allowedCommands: ["caldera", "start_maip.sh", "docker"],
+        allowedCommands: ["caldera", "start_maip.sh", "start_maip_iframe.sh", "docker"],
         maxConnections: 10,
         rateLimitRequests: 100,
         rateLimitWindow: 60000,
-        jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
+        jwtSecret: process.env.JWT_SECRET || process.env.JWT_SECRET || 'CHANGE-THIS-SECRET-KEY-IN-PRODUCTION',
         jwtExpiresIn: '24h'
     },
     logging: {
@@ -32,7 +32,7 @@ export const config = {
         }
     },
     jwt: {
-        secret: process.env.JWT_SECRET || 'your-secret-key',
+        secret: process.env.JWT_SECRET || process.env.JWT_SECRET || 'CHANGE-THIS-SECRET-KEY-IN-PRODUCTION',
         expiresIn: '24h'
     }
 };

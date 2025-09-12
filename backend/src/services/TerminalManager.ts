@@ -74,10 +74,11 @@ export class TerminalManager implements ITerminalManager {
       // Create user-friendly attack ID for display (1-based)
       const userFriendlyAttackId = attackIndex !== undefined ? `attack-${attackIndex + 1}` : attackId;
       
-      // Check if terminal already exists and remove it to avoid duplicates
-      if (this.terminals.has(id)) {
-        logger.warn(`Terminal ${id} already exists, removing old one`);
-        this.removeTerminal(id);
+      // Check if terminal already exists - if so, return existing terminal instead of recreating
+      const existingTerminal = this.terminals.get(id);
+      if (existingTerminal) {
+        logger.debug(`Terminal ${id} already exists, returning existing terminal`);
+        return existingTerminal;
       }
       
       const terminal: Terminal = {

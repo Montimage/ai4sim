@@ -26,6 +26,30 @@ router.get('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId', a
 router.put('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId', authMiddleware, scenarioController.updateScenario.bind(scenarioController));
 router.delete('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId', authMiddleware, scenarioController.deleteScenario.bind(scenarioController));
 
+// ===== NOUVELLES ROUTES SPÉCIALISÉES POUR LES COMPOSANTS DE SCÉNARIOS =====
+
+// Routes pour les TARGETS d'un scénario
+router.get('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/targets', authMiddleware, scenarioController.getScenarioTargets.bind(scenarioController));
+router.post('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/targets', authMiddleware, scenarioController.addScenarioTarget.bind(scenarioController));
+router.put('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/targets/:targetId', authMiddleware, scenarioController.updateScenarioTarget.bind(scenarioController));
+router.delete('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/targets/:targetId', authMiddleware, scenarioController.deleteScenarioTarget.bind(scenarioController));
+
+// Routes pour les ATTACKS d'un scénario
+router.get('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/attacks', authMiddleware, scenarioController.getScenarioAttacks.bind(scenarioController));
+router.post('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/attacks', authMiddleware, scenarioController.addScenarioAttack.bind(scenarioController));
+router.put('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/attacks/:attackId', authMiddleware, scenarioController.updateScenarioAttack.bind(scenarioController));
+router.delete('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/attacks/:attackId', authMiddleware, scenarioController.deleteScenarioAttack.bind(scenarioController));
+
+// Routes pour l'EXECUTION HISTORY d'un scénario
+router.get('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/history', authMiddleware, scenarioController.getScenarioHistory.bind(scenarioController));
+router.get('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/history/:executionId', authMiddleware, scenarioController.getScenarioExecution.bind(scenarioController));
+router.delete('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/history/:executionId', authMiddleware, scenarioController.deleteScenarioExecution.bind(scenarioController));
+router.delete('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/history', authMiddleware, scenarioController.clearScenarioHistory.bind(scenarioController));
+
+// Routes pour les SETTINGS d'un scénario
+router.get('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/settings', authMiddleware, scenarioController.getScenarioSettings.bind(scenarioController));
+router.put('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/settings', authMiddleware, scenarioController.updateScenarioSettings.bind(scenarioController));
+
 // Routes pour le contrôle d'exécution des scénarios
 router.post('/projects/:projectId/campaigns/:campaignId/scenarios/:scenarioId/start', (req, _, next) => {
   console.log(`🚀 Route START reçue - Project: ${req.params.projectId}, Campaign: ${req.params.campaignId}, Scenario: ${req.params.scenarioId}`);

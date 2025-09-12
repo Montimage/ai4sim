@@ -1,6 +1,6 @@
 import React from 'react';
+import { getFilteredTools } from '../../../constants/tools';
 import { useAttackStore } from '../../../store/attackStore';
-import { TOOLS } from '../../../constants/tools';
 import { useThemeStore } from '../../../store/themeStore';
 
 interface AttackSelectorProps {
@@ -17,7 +17,7 @@ export const AttackSelector: React.FC<AttackSelectorProps> = ({ tabId }) => {
     return null;
   }
 
-  const selectedTool = TOOLS.find(tool => tool.id === tabState.selectedTool);
+  const selectedTool = getFilteredTools().find(tool => tool.id === tabState.selectedTool);
   
   // Si l'outil n'a pas d'attaques définies ou une seule attaque, pas besoin du sélecteur
   if (!selectedTool?.attacks || selectedTool.attacks.length <= 1) {

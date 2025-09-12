@@ -5,6 +5,7 @@ import { AppError } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import { Project } from '../models/Project';
 import { Campaign } from '../models/Campaign';
+import { Execution } from '../models/Execution';
 import { isValidObjectId } from 'mongoose';
 
 export class ScenarioController {
@@ -500,6 +501,406 @@ export class ScenarioController {
       }
       logger.error('Erreur lors de la récupération des scénarios:', error);
       throw new AppError('Erreur lors de la récupération des scénarios', 500);
+    }
+  }
+
+  // ===== NOUVELLES MÉTHODES POUR LES COMPOSANTS DE SCÉNARIOS =====
+
+  /**
+   * Récupère les targets d'un scénario
+   */
+  async getScenarioTargets(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId);
+      const scenario = await this.scenarioService.getScenarioById(scenarioId);
+      
+      res.json(scenario.targets);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la récupération des targets');
+    }
+  }
+
+  /**
+   * Ajoute une target à un scénario
+   */
+  async addScenarioTarget(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+      const targetData = req.body;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      const updatedScenario = await this.scenarioService.addTarget(scenarioId, targetData);
+      
+      res.json(updatedScenario.targets);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de l\'ajout de la target');
+    }
+  }
+
+  /**
+   * Met à jour une target d'un scénario
+   */
+  async updateScenarioTarget(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId, targetId } = req.params;
+      const targetData = req.body;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      const updatedScenario = await this.scenarioService.updateTarget(scenarioId, targetId, targetData);
+      
+      res.json(updatedScenario.targets);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la mise à jour de la target');
+    }
+  }
+
+  /**
+   * Supprime une target d'un scénario
+   */
+  async deleteScenarioTarget(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId, targetId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      const updatedScenario = await this.scenarioService.removeTarget(scenarioId, targetId);
+      
+      res.json(updatedScenario.targets);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la suppression de la target');
+    }
+  }
+
+  /**
+   * Récupère les attacks d'un scénario
+   */
+  async getScenarioAttacks(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId);
+      const scenario = await this.scenarioService.getScenarioById(scenarioId);
+      
+      res.json(scenario.attacks);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la récupération des attacks');
+    }
+  }
+
+  /**
+   * Ajoute une attack à un scénario
+   */
+  async addScenarioAttack(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+      const attackData = req.body;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      const updatedScenario = await this.scenarioService.addAttack(scenarioId, attackData);
+      
+      res.json(updatedScenario.attacks);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de l\'ajout de l\'attack');
+    }
+  }
+
+  /**
+   * Met à jour une attack d'un scénario
+   */
+  async updateScenarioAttack(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId, attackId } = req.params;
+      const attackData = req.body;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      const updatedScenario = await this.scenarioService.updateAttack(scenarioId, attackId, attackData);
+      
+      res.json(updatedScenario.attacks);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la mise à jour de l\'attack');
+    }
+  }
+
+  /**
+   * Supprime une attack d'un scénario
+   */
+  async deleteScenarioAttack(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId, attackId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      const updatedScenario = await this.scenarioService.removeAttack(scenarioId, attackId);
+      
+      res.json(updatedScenario.attacks);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la suppression de l\'attack');
+    }
+  }
+
+  /**
+   * Récupère l'historique d'exécution d'un scénario
+   */
+  async getScenarioHistory(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId);
+      
+      const executions = await Execution.find({ 
+        scenarioId, 
+        userId: req.user._id 
+      })
+        .sort({ startTime: -1 })
+        .lean();
+
+      res.json(executions);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la récupération de l\'historique');
+    }
+  }
+
+  /**
+   * Récupère une exécution spécifique d'un scénario
+   */
+  async getScenarioExecution(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId, executionId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || 
+          !isValidObjectId(scenarioId) || !isValidObjectId(executionId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId);
+      
+      const execution = await Execution.findOne({ 
+        _id: executionId,
+        scenarioId, 
+        userId: req.user._id 
+      }).lean();
+
+      if (!execution) {
+        throw new AppError('Exécution non trouvée', 404);
+      }
+
+      res.json(execution);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la récupération de l\'exécution');
+    }
+  }
+
+  /**
+   * Supprime une exécution spécifique d'un scénario
+   */
+  async deleteScenarioExecution(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId, executionId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || 
+          !isValidObjectId(scenarioId) || !isValidObjectId(executionId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      
+      const result = await Execution.deleteOne({ 
+        _id: executionId,
+        scenarioId, 
+        userId: req.user._id 
+      });
+
+      if (result.deletedCount === 0) {
+        throw new AppError('Exécution non trouvée', 404);
+      }
+
+      res.json({ message: 'Exécution supprimée avec succès' });
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la suppression de l\'exécution');
+    }
+  }
+
+  /**
+   * Efface tout l'historique d'exécution d'un scénario
+   */
+  async clearScenarioHistory(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      
+      const result = await Execution.deleteMany({ 
+        scenarioId, 
+        userId: req.user._id 
+      });
+
+      res.json({ 
+        message: 'Historique effacé avec succès', 
+        deletedCount: result.deletedCount 
+      });
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de l\'effacement de l\'historique');
+    }
+  }
+
+  /**
+   * Récupère les settings d'un scénario
+   */
+  async getScenarioSettings(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId);
+      const scenario = await this.scenarioService.getScenarioById(scenarioId);
+      
+      const settings = {
+        name: scenario.name,
+        description: scenario.description,
+        sequence: scenario.sequence,
+        status: scenario.status,
+        createdAt: scenario.createdAt,
+        updatedAt: scenario.updatedAt,
+        executionTime: scenario.executionTime
+      };
+
+      res.json(settings);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la récupération des settings');
+    }
+  }
+
+  /**
+   * Met à jour les settings d'un scénario
+   */
+  async updateScenarioSettings(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, campaignId, scenarioId } = req.params;
+      const { name, description, sequence } = req.body;
+
+      if (!isValidObjectId(projectId) || !isValidObjectId(campaignId) || !isValidObjectId(scenarioId)) {
+        throw new AppError('ID invalide', 400);
+      }
+
+      await this.validateScenarioAccess(req.user._id, projectId, campaignId, scenarioId, ['editor', 'owner']);
+      
+      const updatedScenario = await this.scenarioService.updateScenario(scenarioId, {
+        name,
+        description,
+        sequence
+      });
+
+      const settings = {
+        name: updatedScenario.name,
+        description: updatedScenario.description,
+        sequence: updatedScenario.sequence,
+        status: updatedScenario.status,
+        createdAt: updatedScenario.createdAt,
+        updatedAt: updatedScenario.updatedAt,
+        executionTime: updatedScenario.executionTime
+      };
+
+      res.json(settings);
+    } catch (error) {
+      this.handleError(error, res, 'Erreur lors de la mise à jour des settings');
+    }
+  }
+
+  // ===== MÉTHODES UTILITAIRES =====
+
+  /**
+   * Valide l'accès à un scénario
+   */
+  private async validateScenarioAccess(
+    userId: string, 
+    projectId: string, 
+    campaignId: string, 
+    scenarioId: string, 
+    requiredRoles: string[] = []
+  ): Promise<void> {
+    // Vérifier l'accès au projet
+    const projectQuery: any = {
+      _id: projectId,
+      $or: [
+        { owner: userId },
+        { 'sharedWith': { $elemMatch: { userId } } }
+      ]
+    };
+
+    // Si des rôles spécifiques sont requis, les ajouter à la requête
+    if (requiredRoles.length > 0) {
+      projectQuery.$or = [
+        { owner: userId },
+        { 'sharedWith': { $elemMatch: { userId, role: { $in: requiredRoles } } } }
+      ];
+    }
+
+    const project = await Project.findOne(projectQuery);
+
+    if (!project) {
+      throw new AppError('Projet non trouvé ou accès refusé', 403);
+    }
+
+    // Vérifier que le scénario existe et appartient au bon projet/campagne
+    const scenario = await this.scenarioService.getScenarioById(scenarioId);
+    
+    if (scenario.project.toString() !== projectId || scenario.campaign?.toString() !== campaignId) {
+      throw new AppError('Scénario non trouvé', 404);
+    }
+  }
+
+  /**
+   * Gère les erreurs de manière centralisée
+   */
+  private handleError(error: any, res: Response, defaultMessage: string): void {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ message: error.message });
+    } else {
+      logger.error(defaultMessage, error);
+      res.status(500).json({ message: defaultMessage });
     }
   }
 }

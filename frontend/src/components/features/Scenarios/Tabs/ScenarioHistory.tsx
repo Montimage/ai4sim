@@ -384,7 +384,7 @@ const ScenarioHistory: React.FC = () => {
             }`}>
               <div>
                 <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{target.name}</p>
-                <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-white/60'}`}>{target.host}{target.port ? `:${target.port}` : ''}</p>
+                <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-white/60'}`}>{target.host}</p>
               </div>
             </div>
           ))}

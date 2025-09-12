@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useThemeStore } from '../../store/themeStore';
 import { useProjectStore } from '../../store/projectStore';
 import { useProjectManagementStore } from '../../store/projectManagementStore';
-import { TOOLS } from '../../constants/tools';
+import { getFilteredTools } from '../../constants/tools';
 import { toast } from 'react-toastify';
 import { 
   ArrowLeftIcon,
@@ -80,7 +80,7 @@ export const ScenarioManagerView: React.FC = () => {
   // Liste des attaques disponibles (à filtrer depuis TOOLS)
   const availableAttacks = React.useMemo(() => {
     const attacks: any[] = [];
-    TOOLS.forEach((tool: any) => {
+    getFilteredTools().forEach((tool: any) => {
       if (tool.attacks) {
         tool.attacks.forEach((attack: any) => {
           attacks.push({

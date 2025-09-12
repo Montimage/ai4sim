@@ -14,16 +14,21 @@ class WebSocketService {
     private lastHealthCheck: number = 0;
     private adaptiveReconnectDelay: number = 1000;
     
+    // Système de debouncing pour éviter les subscribe/unsubscribe en boucle
+    private subscriptionDebounce: Map<string, number> = new Map();
+    private activeSubscriptions: Set<string> = new Set();
+    private readonly DEBOUNCE_DELAY = 500; // 500ms de délai
+    
     constructor(private readonly url: string) {
-        // Démarrage automatique après 100ms pour laisser le temps à l'application de s'initialiser
+        // Augmenter le délai de démarrage automatique pour éviter les problèmes de performance
         setTimeout(() => {
             if (!this.autoConnected) {
                 this.connect();
                 this.autoConnected = true;
             }
-        }, 100);
+        }, 500); // Augmenté à 500ms
         
-        // Démarrer la surveillance de santé du serveur
+        // Réduire la fréquence de surveillance de santé du serveur
         this.startHealthMonitoring();
     }
 
@@ -44,10 +49,10 @@ class WebSocketService {
      * Démarre la surveillance périodique de la santé du serveur
      */
     private startHealthMonitoring() {
-        // Vérifier la santé du serveur toutes les 30 secondes
+        // Réduire la fréquence : vérifier la santé du serveur toutes les 60 secondes au lieu de 30
         this.healthCheckInterval = window.setInterval(() => {
             this.performHealthCheck();
-        }, 30000);
+        }, 60000);
     }
 
     /**
@@ -56,8 +61,8 @@ class WebSocketService {
     private async performHealthCheck() {
         const now = Date.now();
         
-        // Éviter les vérifications trop fréquentes
-        if (now - this.lastHealthCheck < 10000) {
+        // Augmenter l'intervalle minimum entre les vérifications à 30 secondes
+        if (now - this.lastHealthCheck < 30000) {
             return;
         }
         
@@ -151,8 +156,28 @@ class WebSocketService {
                             return;
                         }
                         
+                        // Add detailed tracing for raw WebSocket messages
+                        console.log(`🌐 [WebSocket-RAW] Received raw message:`, {
+                            timestamp: Date.now(),
+                            messageLength: event.data.length,
+                            messagePreview: event.data.substring(0, 200)
+                        });
+                        
                         try {
                             const data = JSON.parse(event.data);
+                            
+                            // Add detailed tracing for parsed messages
+                            console.log(`📦 [WebSocket-PARSED] Parsed message:`, {
+                                type: data.type,
+                                scenarioId: data.scenarioId || (data.data && data.data.scenarioId),
+                                attackId: data.data?.attackId || data.data?.data?.attackId,
+                                hasOutput: !!(data.data?.output || data.data?.data?.output),
+                                outputLength: (data.data?.output || data.data?.data?.output)?.length || 0,
+                                timestamp: data.timestamp || data.data?.timestamp,
+                                messageId: data.messageId || data.id,
+                                parseTimestamp: Date.now()
+                            });
+                            
                             this.handleMessage(data);
                         } catch (error) {
                             console.error("Failed to parse WebSocket message as JSON:", error);
@@ -229,6 +254,9 @@ class WebSocketService {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             
+            // Détecter si un processus lourd est en cours
+            const isHeavyProcess = this.isHeavyProcessRunning();
+            
             // Backoff adaptatif plus intelligent
             if (this.isServerAvailable) {
                 // Si le serveur est disponible, reconnexion rapide
@@ -238,7 +266,12 @@ class WebSocketService {
                 this.adaptiveReconnectDelay = Math.min(5000 * Math.pow(1.5, this.reconnectAttempts - 1), 60000);
             }
             
-            console.log(`🔄 Reconnexion WebSocket programmée dans ${this.adaptiveReconnectDelay}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            // Délai plus long si un processus lourd est en cours
+            if (isHeavyProcess) {
+                this.adaptiveReconnectDelay = Math.max(this.adaptiveReconnectDelay * 2, 10000);
+            }
+            
+            console.log(`🔄 Reconnexion WebSocket programmée dans ${this.adaptiveReconnectDelay}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})${isHeavyProcess ? ' (processus lourd détecté)' : ''}`);
             
             // Vérifier la disponibilité du serveur avant de tenter une reconnexion
             this.checkServerAvailability()
@@ -355,13 +388,44 @@ class WebSocketService {
     }
     
     /**
+     * Détecte si un processus lourd est en cours d'exécution
+     */
+    private isHeavyProcessRunning(): boolean {
+        // Vérifier les messages récents pour détecter les processus lourds
+        const heavyProcesses = ['maip', 'caldera', 'shennina', 'start_maip.sh'];
+        const recentMessages = this.getRecentMessages();
+        
+        return recentMessages.some(msg => {
+            if (typeof msg === 'string') {
+                return heavyProcesses.some(process => msg.toLowerCase().includes(process));
+            }
+            if (msg && typeof msg === 'object' && msg.payload) {
+                return heavyProcesses.some(process => msg.payload.toLowerCase().includes(process));
+            }
+            return false;
+        });
+    }
+    
+    /**
+     * Récupère les messages récents pour détecter les processus lourds
+     */
+    private getRecentMessages(): any[] {
+        // Cette méthode pourrait être implémentée pour stocker les messages récents
+        // Pour l'instant, on retourne un tableau vide
+        return [];
+    }
+    
+    /**
      * Configure un intervalle de ping pour maintenir la connexion active
      */
     private setupPingInterval() {
         this.clearPingInterval();
         
+        // Détecter si un processus lourd est en cours
+        const isHeavyProcess = this.isHeavyProcessRunning();
+        
         // Ping adaptatif : plus fréquent si le serveur répond bien
-        const pingFrequency = this.isServerAvailable ? 15000 : 30000;
+        const pingFrequency = this.isServerAvailable ? 30000 : 60000; // Augmenté de 15s à 30s
         
         this.pingInterval = window.setInterval(() => {
             if (this.ws?.readyState === WebSocket.OPEN) {
@@ -369,7 +433,8 @@ class WebSocketService {
                 
                 // Vérifier si nous n'avons pas reçu de pong depuis trop longtemps
                 const now = Date.now();
-                const pongTimeout = this.isServerAvailable ? 30000 : 60000; // Timeout adaptatif
+                // Timeout plus long pour les processus lourds (MAIP, Caldera, Shennina)
+                const pongTimeout = isHeavyProcess ? 300000 : (this.isServerAvailable ? 120000 : 180000); // 5 minutes pour les processus lourds
                 
                 if (this.lastPingTime && (now - this.lastPingTime) > pongTimeout) {
                     console.warn(`⚠️ Aucun pong reçu depuis ${pongTimeout/1000} secondes, reconnexion...`);
@@ -382,7 +447,7 @@ class WebSocketService {
             }
         }, pingFrequency);
         
-        console.log(`📡 Ping configuré toutes les ${pingFrequency/1000} secondes`);
+        console.log(`📡 Ping configuré toutes les ${pingFrequency/1000} secondes${isHeavyProcess ? ' (processus lourd détecté)' : ''}`);
     }
     
     /**
@@ -478,19 +543,21 @@ class WebSocketService {
      */
     private handleMessage(data: any) {
         if (typeof data === 'object') {
-            // Émettre l'événement avec le type de message
+            // Add detailed tracing to understand message origins
+            console.log(`🔍 [WebSocket-RAW] Incoming message:`, {
+                type: data.type,
+                scenarioId: data.scenarioId || (data.data && data.data.scenarioId),
+                attackId: data.data?.attackId || data.data?.data?.attackId,
+                hasOutput: !!(data.data?.output || data.data?.data?.output),
+                outputLength: (data.data?.output || data.data?.data?.output)?.length || 0,
+                timestamp: data.timestamp || data.data?.timestamp,
+                messageId: data.messageId || data.id,
+                fullData: data
+            });
+            
+            // Émettre l'événement avec le type de message UNIQUEMENT
+            console.log(`📤 [WebSocket] Emitting event: ${data.type}`);
             this.emit(data.type, data);
-            
-            // Émettre un événement spécifique pour ce tabId si présent
-            if (data.tabId) {
-                this.emit(`${data.type}:${data.tabId}`, data);
-            }
-            
-            // Émission d'un événement générique pour toute activité
-            this.emit('activity', data);
-            
-            // Émission d'un événement wildcard pour capturer tous les messages
-            this.emit('*', data);
         }
     }
     
@@ -554,14 +621,22 @@ class WebSocketService {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, new Set());
         }
+        const currentCount = this.listeners.get(event)?.size || 0;
         this.listeners.get(event)?.add(callback);
+        const newCount = this.listeners.get(event)?.size || 0;
+        
+        console.log(`➕ [WebSocket-LISTENER] Added listener for '${event}': ${currentCount} → ${newCount} listeners`);
     }
     
     /**
      * Supprime un écouteur pour un type d'événement spécifique
      */
     off(event: string, callback: (data: any) => void) {
-        this.listeners.get(event)?.delete(callback);
+        const currentCount = this.listeners.get(event)?.size || 0;
+        const wasDeleted = this.listeners.get(event)?.delete(callback) || false;
+        const newCount = this.listeners.get(event)?.size || 0;
+        
+        console.log(`➖ [WebSocket-LISTENER] Removed listener for '${event}': ${currentCount} → ${newCount} listeners (deleted: ${wasDeleted})`);
     }
     
     /**
@@ -569,9 +644,23 @@ class WebSocketService {
      */
     private emit(event: string, data?: any) {
         const listeners = this.listeners.get(event);
+        const listenerCount = listeners ? listeners.size : 0;
         
+        // Add detailed tracing for event emission
+        console.log(`📢 [WebSocket-EMIT] Emitting event '${event}' to ${listenerCount} listeners:`, {
+            event,
+            listenerCount,
+            hasData: !!data,
+            dataType: data?.type,
+            scenarioId: data?.scenarioId || (data?.data && data?.data.scenarioId),
+            timestamp: Date.now()
+        });
+        
+        let callbackIndex = 0;
         listeners?.forEach((callback) => {
             try {
+                callbackIndex++;
+                console.log(`🎯 [WebSocket-EMIT] Calling listener ${callbackIndex}/${listenerCount} for event '${event}'`);
                 callback(data);
             } catch (error) {
                 console.error(`Error in WebSocket ${event} handler:`, error);
@@ -588,6 +677,9 @@ class WebSocketService {
         this.clearConnectionTimeout();
         this.clearPingInterval();
         this.clearHealthMonitoring();
+        
+        // Nettoyer les abonnements avant de fermer
+        this.cleanupSubscriptions();
         
         // Vider la file d'attente
         this.messageQueue = [];
@@ -682,6 +774,7 @@ class WebSocketService {
 
     /**
      * S'abonne aux mises à jour d'un scénario pour recevoir les messages de terminal
+     * Avec système de debouncing pour éviter les subscribe/unsubscribe en boucle
      */
     subscribeToScenario(scenarioId: string) {
         if (!scenarioId) {
@@ -689,15 +782,36 @@ class WebSocketService {
             return;
         }
         
-        console.log(`📡 Subscribing to scenario: ${scenarioId}`);
-        this.send({
-            type: 'subscribe-scenario',
-            scenarioId: scenarioId
-        });
+        // Vérifier si on est déjà abonné
+        if (this.activeSubscriptions.has(scenarioId)) {
+            return;
+        }
+        
+        // Annuler le timer de debounce existant s'il y en a un
+        const existingTimer = this.subscriptionDebounce.get(scenarioId);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+        }
+        
+        // Programmer l'abonnement avec un délai de debounce
+        const timer = window.setTimeout(() => {
+            if (!this.activeSubscriptions.has(scenarioId)) {
+                console.log(`📡 Subscribing to scenario: ${scenarioId}`);
+                this.activeSubscriptions.add(scenarioId);
+                this.send({
+                    type: 'subscribe-scenario',
+                    scenarioId: scenarioId
+                });
+            }
+            this.subscriptionDebounce.delete(scenarioId);
+        }, this.DEBOUNCE_DELAY);
+        
+        this.subscriptionDebounce.set(scenarioId, timer);
     }
 
     /**
      * Se désabonne des mises à jour d'un scénario
+     * Avec système de debouncing pour éviter les subscribe/unsubscribe en boucle
      */
     unsubscribeFromScenario(scenarioId: string) {
         if (!scenarioId) {
@@ -705,11 +819,22 @@ class WebSocketService {
             return;
         }
         
-        console.log(`📡 Unsubscribing from scenario: ${scenarioId}`);
-        this.send({
-            type: 'unsubscribe-scenario',
-            scenarioId: scenarioId
-        });
+        // Annuler tout timer de subscription en attente
+        const existingTimer = this.subscriptionDebounce.get(scenarioId);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+            this.subscriptionDebounce.delete(scenarioId);
+        }
+        
+        // Se désabonner seulement si on était abonné
+        if (this.activeSubscriptions.has(scenarioId)) {
+            console.log(`📡 Unsubscribing from scenario: ${scenarioId}`);
+            this.activeSubscriptions.delete(scenarioId);
+            this.send({
+                type: 'unsubscribe-scenario',
+                scenarioId: scenarioId
+            });
+        }
     }
 
     /**
@@ -721,11 +846,34 @@ class WebSocketService {
             return;
         }
         
+        // Limiter les demandes d'historique - pas plus d'une par seconde par scénario
+        const lastRequest = this.subscriptionDebounce.get(`history-${scenarioId}`);
+        const now = Date.now();
+        
+        if (lastRequest && (now - lastRequest) < 1000) {
+            return; // Ignorer si demandé trop récemment
+        }
+        
+        this.subscriptionDebounce.set(`history-${scenarioId}`, now);
         console.log(`📡 Requesting execution history for scenario: ${scenarioId}`);
         this.send({
             type: 'request-execution-history',
             scenarioId: scenarioId
         });
+    }
+    
+    /**
+     * Nettoie tous les abonnements actifs lors de la déconnexion
+     */
+    private cleanupSubscriptions() {
+        // Annuler tous les timers de debounce
+        this.subscriptionDebounce.forEach((timer) => {
+            if (typeof timer === 'number') {
+                clearTimeout(timer);
+            }
+        });
+        this.subscriptionDebounce.clear();
+        this.activeSubscriptions.clear();
     }
 }
 

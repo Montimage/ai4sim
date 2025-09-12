@@ -1,10 +1,14 @@
+// Types pour les rôles système
+export type SystemRole = 'super_admin' | 'admin' | 'project_manager' | 'security_analyst' | 'user' | 'viewer';
+
+// Types pour les rôles de projet (pour compatibilité)
+export type ProjectRole = 'owner' | 'editor' | 'viewer';
+
 export interface Target {
   _id?: string;
   host: string;
   name: string;
   description?: string;
-  port?: number;
-  protocol?: string;
   hasAgent?: boolean;
 }
 
@@ -63,7 +67,7 @@ export interface Campaign {
 export interface SharedUser {
   userId: string;
   username: string;
-  role: 'viewer' | 'editor' | 'owner';
+  role: SystemRole; // Utiliser les rôles système
 }
 
 export interface Project {
@@ -79,6 +83,20 @@ export interface Project {
     _id: string;
     username: string;
   };
+}
+
+// Interface pour les paramètres de projet
+export interface ProjectSettings {
+  _id: string;
+  name: string;
+  description: string;
+  users: ProjectUser[];
+}
+
+export interface ProjectUser {
+  _id: string;
+  username: string;
+  role: SystemRole; // Utiliser les rôles système
 }
 
 // Interface pour le ProjectStore utilisé par les composants React
@@ -98,7 +116,7 @@ export interface ProjectStoreInterface {
   createProject: (project: Partial<Project>) => Promise<Project>;
   updateProject: (projectId: string, updates: Partial<Project>) => Promise<Project>;
   deleteProject: (projectId: string) => Promise<void>;
-  shareProject: (projectId: string, username: string, role: 'viewer' | 'editor') => Promise<Project>;
+  shareProject: (projectId: string, username: string, role: SystemRole) => Promise<Project>;
   removeUserFromProject: (projectId: string, userId: string) => Promise<Project>;
   addCampaign: (campaign: Partial<Campaign>) => Promise<Project>;
   updateCampaign: (campaignId: string, updates: Partial<Campaign>) => Promise<Project>;

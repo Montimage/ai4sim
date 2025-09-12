@@ -346,7 +346,7 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({ execution, scenario }
                 <p><strong>Recommended models for better results:</strong></p>
                 <p>• llama3.2:latest or llama3.1:latest (optimal performance)</p>
                 <p>• mistral:latest (good speed/quality balance)</p>
-                <p>• qwen2.5:latest (excellent for technical analysis)</p>
+                <p>• codellama:latest (excellent for technical analysis)</p>
               </div>
             </div>
           </div>
@@ -381,7 +381,7 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({ execution, scenario }
                 <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded p-3 mt-2">
                   <h5 className="font-medium text-red-800 dark:text-red-200 text-sm mb-1">💡 Conseils de Performance Ollama :</h5>
                   <ul className="text-xs text-red-700 dark:text-red-300 space-y-1">
-                    <li>• <strong>Modèles recommandés :</strong> llama3.2:latest, mistral:latest, qwen2.5:latest</li>
+                    <li>• <strong>Modèles recommandés :</strong> llama3.2:latest, mistral:latest, llama3.1:latest</li>
                     <li>• <strong>Éviter :</strong> Les modèles très volumineux (&gt;13B) sur des systèmes avec moins de 16GB RAM</li>
                     <li>• <strong>RAM :</strong> Minimum 8GB, recommandé 16GB+ pour les gros modèles</li>
                     <li>• <strong>Alternative :</strong> Utiliser OpenRouter pour une analyse plus rapide</li>
@@ -398,6 +398,18 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({ execution, scenario }
                     <li>• Verify API keys in AI settings</li>
                     <li>• Ensure the AI service URL is correct</li>
                     <li>• Try switching to a different AI provider</li>
+                  </ul>
+                </div>
+              )}
+              
+              {error.includes('Empty response from OpenRouter') && (
+                <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded p-3 mt-2">
+                  <h5 className="font-medium text-red-800 dark:text-red-200 text-sm mb-1">💡 OpenRouter Tips:</h5>
+                  <ul className="text-xs text-red-700 dark:text-red-300 space-y-1">
+                    <li>• Le modèle gratuit peut être surchargé - réessayez dans quelques minutes</li>
+                    <li>• Vérifiez votre clé API OpenRouter dans les paramètres</li>
+                    <li>• Le système essaie automatiquement plusieurs modèles de fallback</li>
+                    <li>• Considérez utiliser Ollama en local pour plus de fiabilité</li>
                   </ul>
                 </div>
               )}
@@ -487,7 +499,7 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({ execution, scenario }
                 <div key={index} className="border-l-4 border-blue-500 pl-4">
                   <div className="flex items-center justify-between mb-2">
                     <h5 className="font-medium text-gray-800 dark:text-gray-200">
-                      {attackAnalysis.attackName} ({attackAnalysis.tool})
+                      {attackAnalysis.attackName}
                     </h5>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getAnalysisStatusClass(attackAnalysis.status)}`}>
                       {getAnalysisStatusIcon(attackAnalysis.status)} {attackAnalysis.status.toUpperCase()}

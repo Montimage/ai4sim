@@ -1,14 +1,20 @@
 import React from 'react';
+import { getFilteredTools } from '../../../constants/tools';
 import { useAttackStore } from '../../../store/attackStore';
-import { TOOLS } from '../../../constants/tools';
-import { CheckCircleIcon, ClockIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { 
+  BoltIcon,
+  CpuChipIcon,
+  CloudIcon,
+  WrenchScrewdriverIcon
+} from '@heroicons/react/24/outline';
 
-type StatusType = 'implemented' | 'in-progress' | 'not-implemented';
+type StatusType = 'implemented' | 'in-progress' | 'not-implemented' | 'active';
 
-const STATUS_ICONS: Record<StatusType, { icon: typeof CheckCircleIcon, class: string }> = {
-  implemented: { icon: CheckCircleIcon, class: 'text-green-500' },
-  'in-progress': { icon: ClockIcon, class: 'text-yellow-500' },
-  'not-implemented': { icon: XCircleIcon, class: 'text-gray-400' }
+const STATUS_ICONS: Record<StatusType, { icon: typeof BoltIcon, class: string }> = {
+  implemented: { icon: BoltIcon, class: 'text-green-500' },
+  'in-progress': { icon: WrenchScrewdriverIcon, class: 'text-yellow-500' },
+  'not-implemented': { icon: CloudIcon, class: 'text-gray-400' },
+  active: { icon: CpuChipIcon, class: 'text-blue-500' }
 };
 
 interface ToolListProps {
@@ -22,14 +28,13 @@ export const ToolList: React.FC<ToolListProps> = ({ tabId }) => {
   const isRunning = tabState?.status === 'running' || tabState?.isRunning;
 
   const filteredTools = React.useMemo(() => {
-    if (!tabState?.selectedCategory || tabState.selectedCategory === 'ALL') return TOOLS;
-    return TOOLS.filter(tool => tool.type === tabState.selectedCategory);
+    if (!tabState?.selectedCategory || tabState.selectedCategory === 'ALL') return getFilteredTools();
+    return getFilteredTools().filter(tool => tool.type === tabState.selectedCategory);
   }, [tabState?.selectedCategory]);
 
   const onToolSelect = (toolId: string) => {
-    if (!isRunning) {
-      handleToolSelect(tabId, toolId);
-    }
+    console.log('🔧 DEBUG: Selecting tool:', toolId);
+    handleToolSelect(tabId, toolId);
   };
 
   return (
@@ -51,7 +56,8 @@ export const ToolList: React.FC<ToolListProps> = ({ tabId }) => {
       >
       <div className="space-y-3">
         {filteredTools.map((tool) => {
-          const StatusIcon = STATUS_ICONS[tool.status as StatusType]?.icon;
+          const statusConfig = STATUS_ICONS[tool.status as StatusType] || STATUS_ICONS['not-implemented'];
+          const StatusIcon = statusConfig.icon;
           const isSelected = tabState?.selectedTool === tool.id;
           const isDisabled = isRunning && !isSelected;
 
@@ -87,9 +93,9 @@ export const ToolList: React.FC<ToolListProps> = ({ tabId }) => {
                   {/* Tool Status */}
                     <div className="flex items-center space-x-2 mt-1">
                     {StatusIcon && (
-                        <StatusIcon className={`h-3 w-3 ${STATUS_ICONS[tool.status as StatusType].class}`} />
+                        <StatusIcon className={`h-3 w-3 ${statusConfig.class}`} />
                     )}
-                    <span className={`text-xs font-medium capitalize ${STATUS_ICONS[tool.status as StatusType].class}`}>
+                    <span className={`text-xs font-medium capitalize ${statusConfig.class}`}>
                       {tool.status.replace('-', ' ')}
                     </span>
                   </div>

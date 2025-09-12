@@ -11,11 +11,11 @@ import {
   Eye
 } from 'lucide-react';
 import { useThemeStore } from '../../store/themeStore';
+import { useNotificationStore } from '../../store/notificationStore';
 
 interface User {
   _id: string;
   username: string;
-  email: string;
   firstName?: string;
   lastName?: string;
   role: string;
@@ -40,6 +40,7 @@ interface UserStats {
 
 export const UserManagement: React.FC = () => {
   const { theme } = useThemeStore();
+  const { addNotification } = useNotificationStore();
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,9 +118,24 @@ export const UserManagement: React.FC = () => {
       if (response.ok) {
         await loadUsers();
         await loadStats();
+        addNotification({
+          title: lock ? 'User Locked' : 'User Unlocked',
+          message: `User has been ${lock ? 'locked' : 'unlocked'} successfully`,
+          type: 'success',
+          category: 'system'
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to toggle user lock');
       }
     } catch (error) {
       console.error('Error toggling user lock:', error);
+      addNotification({
+        title: 'Error',
+        message: `Unable to ${lock ? 'lock' : 'unlock'} user`,
+        type: 'error',
+        category: 'system'
+      });
     }
   };
 
@@ -139,10 +155,24 @@ export const UserManagement: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Temporary password: ${data.tempPassword}`);
+        addNotification({
+          title: 'Password Reset',
+          message: `Temporary password: ${data.tempPassword}`,
+          type: 'success',
+          category: 'system'
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to reset password');
       }
     } catch (error) {
       console.error('Error resetting password:', error);
+      addNotification({
+        title: 'Error',
+        message: 'Unable to reset password',
+        type: 'error',
+        category: 'system'
+      });
     }
   };
 
@@ -163,9 +193,24 @@ export const UserManagement: React.FC = () => {
       if (response.ok) {
         await loadUsers();
         await loadStats();
+        addNotification({
+          title: 'User Deleted',
+          message: 'User has been deleted successfully',
+          type: 'success',
+          category: 'system'
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete user');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
+      addNotification({
+        title: 'Error',
+        message: 'Unable to delete user',
+        type: 'error',
+        category: 'system'
+      });
     }
   };
 
@@ -421,7 +466,7 @@ export const UserManagement: React.FC = () => {
                               {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
                             </div>
                             <div className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
-                              {user.email}
+                              @{user.username}
                             </div>
                           </div>
                         </div>
@@ -437,7 +482,7 @@ export const UserManagement: React.FC = () => {
                         </span>
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {user.lastLogin ? formatDate(user.lastLogin) : 'Jamais'}
+                        {user.lastLogin ? formatDate(user.lastLogin) : 'Never'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center space-x-2">
@@ -493,7 +538,7 @@ export const UserManagement: React.FC = () => {
         {totalPages > 1 && (
           <div className="mt-6 flex items-center justify-between">
             <div className={`text-sm ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-              Page {currentPage} sur {totalPages}
+              Page {currentPage} of {totalPages}
             </div>
             <div className="flex space-x-2">
               <button
@@ -509,7 +554,7 @@ export const UserManagement: React.FC = () => {
                     : 'bg-gray-800 border-gray-600 text-gray-300'
                 }`}
               >
-                Précédent
+                Previous
               </button>
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
@@ -524,7 +569,7 @@ export const UserManagement: React.FC = () => {
                     : 'bg-gray-800 border-gray-600 text-gray-300'
                 }`}
               >
-                Suivant
+                Next
               </button>
             </div>
           </div>

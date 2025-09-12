@@ -6,7 +6,6 @@ import crypto from 'crypto';
 
 export interface CreateUserData {
   username: string;
-  email: string;
   password: string;
   firstName?: string;
   lastName?: string;
@@ -19,7 +18,6 @@ export interface CreateUserData {
 
 export interface UpdateUserData {
   username?: string;
-  email?: string;
   firstName?: string;
   lastName?: string;
   department?: string;
@@ -33,7 +31,7 @@ export interface UserSearchFilters {
   role?: string;
   department?: string;
   isActive?: boolean;
-  search?: string; // Recherche dans username, email, firstName, lastName
+  search?: string; // Recherche dans username, firstName, lastName
 }
 
 export interface SecurityAuditLog {
@@ -56,14 +54,11 @@ export class UserManagementService {
     try {
       // Vérifier si l'utilisateur existe déjà
       const existingUser = await User.findOne({
-        $or: [
-          { username: userData.username },
-          { email: userData.email }
-        ]
+        username: userData.username
       });
 
       if (existingUser) {
-        throw new Error('Username or email already exists');
+        throw new Error('Username already exists');
       }
 
       // Valider le rôle
@@ -74,7 +69,6 @@ export class UserManagementService {
       // Créer l'utilisateur
       const user = new User({
         username: userData.username,
-        email: userData.email,
         password: userData.password,
         firstName: userData.firstName,
         lastName: userData.lastName,
@@ -84,7 +78,6 @@ export class UserManagementService {
         permissions: userData.permissions || [],
         createdBy: userData.createdBy,
         isActive: true,
-        isEmailVerified: false,
         securitySettings: {
           mfaEnabled: false,
           passwordLastChanged: new Date(),
@@ -97,7 +90,6 @@ export class UserManagementService {
           language: 'fr',
           timezone: 'Europe/Paris',
           notifications: {
-            email: true,
             browser: true,
             security: true
           }
@@ -129,15 +121,14 @@ export class UserManagementService {
         throw new Error('User not found');
       }
 
-      // Vérifier les conflits d'username/email
-      if (updateData.username || updateData.email) {
-        const conflictQuery: any = { _id: { $ne: userId } };
-        if (updateData.username) conflictQuery.username = updateData.username;
-        if (updateData.email) conflictQuery.email = updateData.email;
-
-        const existingUser = await User.findOne(conflictQuery);
+      // Vérifier les conflits d'username
+      if (updateData.username) {
+        const existingUser = await User.findOne({ 
+          username: updateData.username,
+          _id: { $ne: userId }
+        });
         if (existingUser) {
-          throw new Error('Username or email already exists');
+          throw new Error('Username already exists');
         }
       }
 
@@ -228,7 +219,6 @@ export class UserManagementService {
       if (filters.search) {
         query.$or = [
           { username: { $regex: filters.search, $options: 'i' } },
-          { email: { $regex: filters.search, $options: 'i' } },
           { firstName: { $regex: filters.search, $options: 'i' } },
           { lastName: { $regex: filters.search, $options: 'i' } }
         ];
@@ -547,6 +537,64 @@ export class UserManagementService {
       };
     } catch (error) {
       logger.error('Error getting security audit logs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mettre à jour les permissions d'un utilisateur
+   */
+  async updateUserPermissions(userId: string, permissions: IPermission[], updatedBy: string): Promise<IUser> {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      user.permissions = permissions;
+      await user.save();
+
+      logger.info(`User permissions updated: ${user.username}`, {
+        userId: user._id,
+        updatedBy,
+        permissionsCount: permissions.length
+      });
+
+      return user;
+    } catch (error) {
+      logger.error('Error updating user permissions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mettre à jour les rôles personnalisés d'un utilisateur
+   */
+  async updateUserCustomRoles(userId: string, customRoles: string[], updatedBy: string): Promise<IUser> {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Vérifier que les rôles personnalisés existent
+      const existingRoles = await Role.find({ _id: { $in: customRoles } });
+      if (existingRoles.length !== customRoles.length) {
+        throw new Error('Some custom roles do not exist');
+      }
+
+      user.customRoles = customRoles;
+      await user.save();
+
+      logger.info(`User custom roles updated: ${user.username}`, {
+        userId: user._id,
+        updatedBy,
+        customRoles
+      });
+
+      return user;
+    } catch (error) {
+      logger.error('Error updating user custom roles:', error);
       throw error;
     }
   }

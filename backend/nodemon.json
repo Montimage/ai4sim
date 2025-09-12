@@ -1,6 +1,19 @@
 {
   "watch": ["src"],
-  "ext": ".ts,.js",
-  "ignore": [],
-  "exec": "ts-node ./src/server.ts"
+  "ext": "ts,js,json",
+  "ignore": [
+    "*.spec.ts",
+    "*.test.ts",
+    "node_modules",
+    "logs",
+    "*.log"
+  ],
+  "exec": "ts-node src/server.ts",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "signal": "SIGTERM",
+  "delay": 3000,
+  "verbose": true,
+  "restartable": "rs"
 }

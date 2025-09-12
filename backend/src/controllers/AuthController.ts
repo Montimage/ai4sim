@@ -23,10 +23,26 @@ export class AuthController {
 
   async register(req: Request, res: Response): Promise<Response> {
     try {
-      const { username, password } = req.body;
+      const { username, password, firstName, lastName, role = 'user' } = req.body;
       
       if (!username || !password) {
         return res.status(400).json({ message: 'Username and password are required' });
+      }
+
+      // Validation du mot de passe
+      if (password.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+      }
+
+      // Validation du nom d'utilisateur
+      if (username.length < 3) {
+        return res.status(400).json({ message: 'Username must be at least 3 characters long' });
+      }
+
+      // Validation du rôle
+      const validSystemRoles = ['user', 'admin', 'super_admin']; // Seulement les rôles système
+      if (!validSystemRoles.includes(role)) {
+        return res.status(400).json({ message: 'Invalid system role specified' });
       }
 
       const existingUser = await User.findOne({ username });
@@ -37,13 +53,41 @@ export class AuthController {
       const user = new User({
         username,
         password,
-        role: 'user',
-        isActive: true
+        firstName: firstName || '',
+        lastName: lastName || '',
+        role,
+        isActive: true,
+        securitySettings: {
+          mfaEnabled: false,
+          passwordLastChanged: new Date(),
+          failedLoginAttempts: 0,
+          passwordHistory: []
+        },
+        sessions: [],
+        preferences: {
+          theme: 'light',
+          language: 'fr',
+          timezone: 'Europe/Paris',
+          notifications: {
+            browser: true,
+            security: true
+          }
+        }
       });
 
       await user.save();
-      const result = await AuthService.login(username, password);
-      return res.status(201).json(result);
+      
+      // Retourner un message de succès sans se connecter automatiquement
+      return res.status(201).json({ 
+        message: 'User created successfully',
+        user: {
+          _id: user._id,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        }
+      });
     } catch (error) {
       logger.error('Register error:', error);
       return res.status(400).json({ message: error instanceof Error ? error.message : 'Registration failed' });

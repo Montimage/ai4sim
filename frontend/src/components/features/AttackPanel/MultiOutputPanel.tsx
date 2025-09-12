@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAttackStore } from '../../../store/attackStore';
 import { useThemeStore } from '../../../store/themeStore';
-import { TOOLS } from '../../../constants/tools';
+import { getFilteredTools } from '../../../constants/tools';
 import { 
   ClipboardIcon, 
   TrashIcon, 
@@ -41,7 +41,7 @@ export const MultiOutputPanel: React.FC<MultiOutputPanelProps> = ({ tabId }) => 
   // Récupérer la configuration de l'outil sélectionné
   useEffect(() => {
     if (tabState?.selectedTool) {
-      const tool = TOOLS.find(t => t.id === tabState.selectedTool);
+      const tool = getFilteredTools().find(t => t.id === tabState.selectedTool);
       setSelectedTool(tool);
     }
   }, [tabState?.selectedTool]);
@@ -58,11 +58,38 @@ export const MultiOutputPanel: React.FC<MultiOutputPanelProps> = ({ tabId }) => 
     }
   }, [tabState?.multiOutputs]);
 
-  if (!selectedTool?.multiOutput?.enabled || !tabState?.multiOutputs) {
+  // Forcer la mise à jour quand le tabId change
+  useEffect(() => {
+    if (tabState?.multiOutputs) {
+      Object.keys(tabState.multiOutputs).forEach(outputId => {
+        const ref = outputRefs.current[outputId];
+        if (ref) {
+          ref.scrollTop = ref.scrollHeight;
+        }
+      });
+    }
+  }, [tabId]);
+
+  // Déterminer si on utilise multiOutput ou sequentialExecution
+  const isSequentialExecution = selectedTool?.sequentialExecution?.enabled;
+  const isMultiOutput = selectedTool?.multiOutput?.enabled;
+  
+  if ((!isMultiOutput && !isSequentialExecution) || !tabState?.multiOutputs) {
     return null;
   }
 
-  const { outputs } = selectedTool.multiOutput;
+  // Récupérer les outputs selon le type d'exécution
+  const outputs = isSequentialExecution 
+    ? selectedTool.sequentialExecution.steps.map((step: any) => ({
+        id: step.id,
+        name: step.name,
+        description: step.description,
+        command: step.command,
+        workingDirectory: step.workingDirectory,
+        successMessage: step.successMessage
+      }))
+    : selectedTool.multiOutput.outputs;
+
   const { multiOutputs, activeOutput, outputViewMode } = tabState;
 
   const handleCopy = (outputId: string) => {
@@ -173,7 +200,9 @@ export const MultiOutputPanel: React.FC<MultiOutputPanelProps> = ({ tabId }) => 
         theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-gray-700 bg-gray-800'
       }`}>
         <div className="flex items-center space-x-4">
-          <h3 className="text-sm font-medium">Multi Console Output</h3>
+          <h3 className="text-sm font-medium">
+            {isSequentialExecution ? 'Sequential Execution Output' : 'Multi Console Output'}
+          </h3>
           
           {/* View Mode Toggle */}
           <div className="flex items-center space-x-1 bg-gray-200 dark:bg-gray-700 rounded-lg p-1">

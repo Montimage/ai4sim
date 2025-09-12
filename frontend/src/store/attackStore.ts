@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { TOOLS } from '../constants/tools';
+import { getFilteredTools } from '../constants/tools';
 import { useAuthStore } from './authStore';
 import { createStorage } from '../services/storage';
 import { websocket } from '../services/websocket';
@@ -36,6 +36,8 @@ export interface Tool {
     port: number;
     successMessage?: string;
   };
+  multiOutput?: MultiOutputConfig;
+  sequentialExecution?: SequentialExecutionConfig;
 }
 
 export interface MultiOutput {
@@ -56,22 +58,50 @@ export interface MultiOutputConfig {
   outputs: MultiOutput[];
 }
 
+export interface SequentialStep {
+  id: string;
+  name: string;
+  description: string;
+  command: string;
+  workingDirectory?: string;
+  successMessage?: string;
+  dependsOn?: string;
+  iframe?: {
+    port: number;
+    path: string;
+  };
+}
+
+export interface SequentialExecutionConfig {
+  enabled: boolean;
+  steps: SequentialStep[];
+  finalIframe?: {
+    port: number;
+    successMessage?: string;
+  };
+}
+
 export interface TabState {
   selectedTool?: string;
   selectedAttack?: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, string>;
+  customCommand?: string;
+  isRunning?: boolean;
+  loading?: boolean;
+  status?: 'idle' | 'running' | 'completed' | 'error' | 'stopped';
+  iframeReady?: boolean;
+  lockedForInteraction?: boolean;
+  multiOutputs?: Record<string, string[]>;
+  multiOutputsCache?: Record<string, string[]>; // Cache persistant des outputs multiples
+  activeOutput?: string;
+  outputViewMode?: 'split' | 'tabs' | 'single';
+  outputCache?: string[];
+  lastOutputUpdate?: number;
   category?: string;
   output: string[];
-  multiOutputs?: Record<string, string[]>;
-  activeOutput?: string;
-  outputViewMode?: 'single' | 'split';
-  isRunning: boolean;
-  status?: string;
+  outputTimestamps?: number[]; // Timestamps correspondant aux outputs
   selectedCategory?: string;
-  loading: boolean;
-  iframeReady: boolean;
-  customCommand?: string;
-  lockedForInteraction: boolean;
+  persistentOutput?: string[]; // Output persistant qui ne se perd jamais
 }
 
 export interface ExportedTab {
@@ -123,6 +153,12 @@ interface AttackState {
   loadConfig: (config: ExportConfig) => void;
   deleteConfig: (configDate: string) => void;
   loadUserConfigs: () => void;
+  // Nouvelles méthodes pour la persistance des outputs
+  addOutputToCache: (tabId: string, output: string) => void;
+  getOutputCache: (tabId: string) => string[];
+  clearOutputCache: (tabId: string) => void;
+  restoreOutputFromCache: (tabId: string) => void;
+  addPersistentOutput: (tabId: string, output: string) => void;
 }
 
 export const useAttackStore = create<AttackState>()(
@@ -169,9 +205,10 @@ export const useAttackStore = create<AttackState>()(
               selectedAttack: undefined,
               parameters: {},
               output: [],
+              outputTimestamps: [],
               multiOutputs: undefined,
               activeOutput: undefined,
-              outputViewMode: 'single',
+              outputViewMode: 'tabs',
               isRunning: false,
               category: 'ALL',
               status: 'idle',
@@ -179,7 +216,10 @@ export const useAttackStore = create<AttackState>()(
               loading: false,
               iframeReady: false,
               customCommand: undefined,
-              lockedForInteraction: false
+              lockedForInteraction: false,
+              outputCache: [],
+              persistentOutput: [],
+              lastOutputUpdate: Date.now()
             }
           },
           hasInitialChoice: true
@@ -207,10 +247,38 @@ export const useAttackStore = create<AttackState>()(
       }),
 
       setActiveTab: (id) => {
-        set(state => ({
-          ...state,
-          activeTabId: id
-        }));
+        set(state => {
+          // Lors du changement d'onglet, restaurer automatiquement les outputs depuis le cache
+          const currentState = state.tabStates[id];
+          if (currentState) {
+            const cachedOutput = currentState.outputCache || [];
+            const persistentOutput = currentState.persistentOutput || [];
+            
+            // Utiliser persistentOutput comme source principale
+            const restoredOutput = persistentOutput.length > 0 ? persistentOutput : cachedOutput;
+            
+            // Si l'output actuel est vide mais qu'on a du cache, restaurer
+            if (currentState.output.length === 0 && restoredOutput.length > 0) {
+              console.log(`[setActiveTab] Auto-restoring ${restoredOutput.length} outputs for tab ${id}`);
+              return {
+                ...state,
+                activeTabId: id,
+                tabStates: {
+                  ...state.tabStates,
+                  [id]: {
+                    ...currentState,
+                    output: restoredOutput
+                  }
+                }
+              };
+            }
+          }
+          
+          return {
+            ...state,
+            activeTabId: id
+          };
+        });
       },
       
       setCurrentView: (view) => set({ currentView: view }),
@@ -227,7 +295,9 @@ export const useAttackStore = create<AttackState>()(
             status: 'idle',
             loading: false,
             iframeReady: false,
-            lockedForInteraction: false
+            lockedForInteraction: false,
+            outputCache: [],
+            lastOutputUpdate: Date.now()
           };
 
           let updatedRunningState = updates.isRunning !== undefined ? updates.isRunning : currentState.isRunning;
@@ -299,7 +369,7 @@ export const useAttackStore = create<AttackState>()(
         const currentTool = state.tabStates[tabId]?.selectedTool;
         if (!currentTool) return;
 
-        const tool = TOOLS.find(t => t.id === currentTool);
+        const tool = getFilteredTools().find(t => t.id === currentTool);
         if (!tool) return;
         
         const cleanParameters: Record<string, any> = {};
@@ -334,75 +404,36 @@ export const useAttackStore = create<AttackState>()(
         }));
       },
 
-      addOutput: (tabId: string, output: string) => set(state => {
-        if (!output || !tabId || !state.tabStates[tabId]) return state;
-
-        const currentOutput = state.tabStates[tabId].output || [];
-        const lastMessage = currentOutput[currentOutput.length - 1];
-        const trimmedOutput = output.trimEnd();
-        
-        // Check for fatal errors that should stop execution
-        const isFatalError = (message: string): boolean => {
-          const lowerMessage = message.toLowerCase();
-          return lowerMessage.includes('process exited with code') && !lowerMessage.includes('code 0') ||
-                 lowerMessage.includes('cannot connect to the docker daemon') ||
-                 lowerMessage.includes('access denied') ||
-                 lowerMessage.includes('unable to find image') ||
-                 lowerMessage.includes('permission denied') ||
-                 lowerMessage.includes('connection refused') ||
-                 lowerMessage.includes('fatal error') ||
-                 lowerMessage.includes('critical error');
-        };
-        
-        // Simple duplicate detection - only check exact duplicates
-        if (lastMessage === trimmedOutput) {
-          return state;
-        }
-        
-        // Check if this is a fatal error
-        const isFatal = isFatalError(trimmedOutput);
-        
-        // Update tab state
-        const updatedTabState = {
-          ...state.tabStates[tabId],
-          output: [...currentOutput, trimmedOutput]
-        };
-        
-        // If fatal error, stop the execution
-        if (isFatal && state.tabStates[tabId].isRunning) {
-          updatedTabState.status = 'error';
-          updatedTabState.isRunning = false;
-          updatedTabState.loading = false;
-          updatedTabState.iframeReady = false;
-          updatedTabState.lockedForInteraction = false;
-          
-          // Send stop command via websocket
-          websocket.send(JSON.stringify({ 
-            type: "stop", 
-            tabId 
-          }));
-        }
-
-        return {
-          ...state,
-          tabStates: {
-            ...state.tabStates,
-            [tabId]: updatedTabState
-          }
-        };
-      }),
-
-      clearOutput: (tabId: string) => {
+      addOutput: (tabId, output) => {
         set(state => {
-          const currentState = state.tabStates[tabId] || {
-            selectedTool: undefined,
-            selectedAttack: undefined,
-            parameters: {},
-            output: [],
-            isRunning: false,
-            category: undefined,
-            status: 'idle'
+          const currentState = state.tabStates[tabId];
+          if (!currentState) return state;
+
+          // Ajouter à tous les caches pour assurer une persistance maximale
+          const newOutput = [...(currentState.output || []), output];
+          const newOutputCache = [...(currentState.outputCache || []), output];
+          const newPersistentOutput = [...(currentState.persistentOutput || []), output];
+          
+          return {
+            ...state,
+            tabStates: {
+              ...state.tabStates,
+              [tabId]: {
+                ...currentState,
+                output: newOutput,
+                outputCache: newOutputCache,
+                persistentOutput: newPersistentOutput,
+                lastOutputUpdate: Date.now()
+              }
+            }
           };
+        });
+      },
+
+      clearOutput: (tabId) => {
+        set(state => {
+          const currentState = state.tabStates[tabId];
+          if (!currentState) return state;
 
           return {
             ...state,
@@ -410,29 +441,29 @@ export const useAttackStore = create<AttackState>()(
               ...state.tabStates,
               [tabId]: {
                 ...currentState,
-                output: []
+                output: [],
+                outputTimestamps: [],
+                outputCache: [],
+                lastOutputUpdate: Date.now()
               }
             }
           };
         });
       },
 
-      clearAllOutputs: () => set(state => {
-        const updatedTabStates = Object.entries(state.tabStates).reduce((acc, [id, tabState]) => {
-          acc[id] = {
-            ...tabState,
-            output: [],
-            loading: false,
-            iframeReady: false
-          };
-          return acc;
-        }, {} as Record<string, TabState>);
-
-        return {
-          ...state,
-          tabStates: updatedTabStates
-        };
-      }),
+      clearAllOutputs: () => {
+        set(state => {
+          const updatedTabStates = { ...state.tabStates };
+          Object.keys(updatedTabStates).forEach(tabId => {
+            updatedTabStates[tabId] = {
+              ...updatedTabStates[tabId],
+              output: [],
+              outputCache: []
+            };
+          });
+          return { ...state, tabStates: updatedTabStates };
+        });
+      },
 
       getTabState: (tabId) => {
         const state = get();
@@ -442,12 +473,15 @@ export const useAttackStore = create<AttackState>()(
           parameters: {},
           category: 'ALL',
           output: [],
+          outputCache: [],
+          persistentOutput: [],
           isRunning: false,
           loading: false,
           iframeReady: false,
           status: 'idle',
           customCommand: undefined,
-          lockedForInteraction: false
+          lockedForInteraction: false,
+          lastOutputUpdate: Date.now()
         };
       },
 
@@ -470,7 +504,7 @@ export const useAttackStore = create<AttackState>()(
               };
             }
             
-            const tool = TOOLS.find(t => t.id === tabState.selectedTool);
+            const tool = getFilteredTools().find(t => t.id === tabState.selectedTool);
             if (!tool) {
               return {
                 selectedTool: tabState.selectedTool,
@@ -529,7 +563,7 @@ export const useAttackStore = create<AttackState>()(
 
         const validTabs = config.tabs.filter(tab => {
           if (!tab.selectedTool) return false;
-          const tool = TOOLS.find(t => t.id === tab.selectedTool);
+          const tool = getFilteredTools().find(t => t.id === tab.selectedTool);
           return tool !== undefined;
         });
 
@@ -545,7 +579,7 @@ export const useAttackStore = create<AttackState>()(
           const toolId = tab.selectedTool;
           if (!toolId) return;
           
-          const tool = TOOLS.find(t => t.id === toolId);
+          const tool = getFilteredTools().find(t => t.id === toolId);
           if (!tool) return;
           
           const cleanParameters: Record<string, any> = {};
@@ -631,41 +665,51 @@ export const useAttackStore = create<AttackState>()(
           return;
         }
         
-        const selectedTool = TOOLS.find(t => t.id === toolId);
+        const selectedTool = getFilteredTools().find(t => t.id === toolId);
         if (!selectedTool) return;
-        
-        const defaultAttack = selectedTool?.attacks && selectedTool.attacks.length > 0 
-          ? selectedTool.attacks[0] 
-          : null;
         
         const defaultParameters: Record<string, any> = {};
         
-        if (defaultAttack?.parameters) {
-          // Utiliser Object.entries avec une assertion de type explicite
-          Object.entries(defaultAttack.parameters).forEach(([paramKey, paramUnknown]) => {
-            // Assertion de type explicite
-            const param = paramUnknown as ToolParameter;
-            defaultParameters[paramKey] = param.default !== undefined ? param.default : '';
+        // Si l'outil n'a qu'une seule attaque, la sélectionner automatiquement
+        if (selectedTool?.attacks && selectedTool.attacks.length === 1) {
+          const singleAttack = selectedTool.attacks[0];
+          if (singleAttack.parameters) {
+            Object.entries(singleAttack.parameters).forEach(([paramKey, paramUnknown]) => {
+              const param = paramUnknown as ToolParameter;
+              defaultParameters[paramKey] = param.default !== undefined ? param.default : '';
+            });
+          }
+          
+          get().updateTabState(tabId, { 
+            selectedTool: toolId,
+            selectedAttack: singleAttack.id,
+            parameters: defaultParameters,
+            status: 'idle',
+            isRunning: false,
+            output: currentState?.output || [],
+            customCommand: undefined,
+            lockedForInteraction: false
           });
-        } else if (selectedTool?.parameters) {
-          // Utiliser Object.entries avec une assertion de type explicite
-          Object.entries(selectedTool.parameters).forEach(([paramKey, paramUnknown]) => {
-            // Assertion de type explicite
-            const param = paramUnknown as ToolParameter;
-            defaultParameters[paramKey] = param.default !== undefined ? param.default : '';
+        } else {
+          // Pour les outils avec plusieurs attaques, ne pas en sélectionner une automatiquement
+          if (selectedTool?.parameters) {
+            Object.entries(selectedTool.parameters).forEach(([paramKey, paramUnknown]) => {
+              const param = paramUnknown as ToolParameter;
+              defaultParameters[paramKey] = param.default !== undefined ? param.default : '';
+            });
+          }
+          
+          get().updateTabState(tabId, { 
+            selectedTool: toolId,
+            selectedAttack: undefined, // Pas de sélection automatique
+            parameters: defaultParameters,
+            status: 'idle',
+            isRunning: false,
+            output: currentState?.output || [],
+            customCommand: undefined,
+            lockedForInteraction: false
           });
         }
-        
-        get().updateTabState(tabId, { 
-          selectedTool: toolId,
-          selectedAttack: defaultAttack?.id,
-          parameters: defaultParameters,
-          status: 'idle',
-          isRunning: false,
-          output: currentState?.output || [],
-          customCommand: undefined,
-          lockedForInteraction: false
-        });
       },
 
       closeAllTabs: () => set(state => ({
@@ -806,6 +850,9 @@ export const useAttackStore = create<AttackState>()(
             }
           };
         });
+        
+        // Aussi ajouter à l'output principal pour la persistance
+        get().addPersistentOutput(tabId, `[${outputId}] ${output}`);
       },
 
       clearMultiOutput: (tabId: string, outputId: string) => {
@@ -907,6 +954,159 @@ export const useAttackStore = create<AttackState>()(
                 multiOutputs,
                 activeOutput: outputIds[0] || undefined,
                 outputViewMode: 'split'
+              }
+            }
+          };
+        });
+      },
+
+      addOutputToCache: (tabId, output) => {
+        set(state => {
+          const currentState = state.tabStates[tabId];
+          if (!currentState) return state;
+
+          const currentCache = currentState.outputCache || [];
+          const newCache = [...currentCache, output];
+
+          return {
+            ...state,
+            tabStates: {
+              ...state.tabStates,
+              [tabId]: {
+                ...currentState,
+                outputCache: newCache,
+                lastOutputUpdate: Date.now()
+              }
+            }
+          };
+        });
+      },
+
+      getOutputCache: (tabId) => {
+        const state = get();
+        return state.tabStates[tabId]?.outputCache || [];
+      },
+
+      clearOutputCache: (tabId) => {
+        set(state => {
+          const currentState = state.tabStates[tabId];
+          if (!currentState) return state;
+
+          return {
+            ...state,
+            tabStates: {
+              ...state.tabStates,
+              [tabId]: {
+                ...currentState,
+                outputCache: []
+              }
+            }
+          };
+        });
+      },
+
+      restoreOutputFromCache: (tabId) => {
+        set(state => {
+          const currentState = state.tabStates[tabId];
+          if (!currentState) return state;
+
+          const cachedOutput = currentState.outputCache || [];
+          const persistentOutput = currentState.persistentOutput || [];
+          
+          // Utiliser persistentOutput comme source principale (le plus fiable)
+          // Compléter avec le cache seulement si persistentOutput est vide
+          const restoredOutput = persistentOutput.length > 0 ? persistentOutput : cachedOutput;
+
+          // Générer des timestamps approximatifs si on restaure depuis le cache
+          const now = Date.now();
+          const restoredTimestamps = restoredOutput.map((_, index) => 
+            now - (restoredOutput.length - index) * 1000 // 1 seconde entre chaque message
+          );
+
+          console.log(`[restoreOutputFromCache] Tab ${tabId}: restored ${restoredOutput.length} outputs from ${persistentOutput.length > 0 ? 'persistent' : 'cache'}`);
+
+          return {
+            ...state,
+            tabStates: {
+              ...state.tabStates,
+              [tabId]: {
+                ...currentState,
+                output: restoredOutput,
+                outputTimestamps: restoredTimestamps
+              }
+            }
+          };
+        });
+      },
+
+      addPersistentOutput: (tabId, output) => {
+        set(state => {
+          const currentState = state.tabStates[tabId];
+          if (!currentState) return state;
+
+          const currentPersistent = currentState.persistentOutput || [];
+          const newPersistent = [...currentPersistent, output];
+          const currentTimestamps = currentState.outputTimestamps || [];
+          const timestamp = Date.now();
+
+          // Logique de détection des patterns pour iframe (Caldera, MAIP, etc.)
+          let updatedState = { ...currentState };
+          
+          // Vérifier si l'output contient un message de succès pour iframe
+          if (currentState.selectedTool) {
+            const tools = getFilteredTools();
+            const selectedTool = tools.find(tool => tool.id === currentState.selectedTool);
+            
+            if (selectedTool?.iframe?.successMessage) {
+              const successMessage = selectedTool.iframe.successMessage;
+              
+              // Vérifier si l'output contient le message de succès
+              if (output.includes(successMessage)) {
+                console.log(`🖼️ [addPersistentOutput] Iframe ready detected for ${selectedTool.name}: "${successMessage}"`);
+                
+                // Pour MAIP avec "Compiled successfully!", ajouter un délai d'1 seconde
+                if (selectedTool.id === 'maip' && successMessage === 'Compiled successfully!') {
+                  console.log(`🔄 [addPersistentOutput] MAIP client ready, switching to interface in 1 second...`);
+                  
+                  // Fallback: si après 3 secondes le backend n'a pas envoyé iframe-ready, on l'active nous-mêmes
+                  setTimeout(() => {
+                    const currentState = get().tabStates[tabId];
+                    if (currentState && !currentState.iframeReady) {
+                      console.log(`⚠️ [addPersistentOutput] Backend iframe-ready timeout, activating interface as fallback`);
+                      get().updateTabState(tabId, {
+                        iframeReady: true,
+                        status: 'completed',
+                        isRunning: false,
+                        loading: false,
+                        lockedForInteraction: false
+                      });
+                    }
+                  }, 3000); // Fallback après 3 secondes
+                } else {
+                  // Pour les autres outils, marquer comme prêt immédiatement
+                  updatedState = {
+                    ...updatedState,
+                    iframeReady: true,
+                    status: 'completed',
+                    isRunning: false,
+                    loading: false,
+                    lockedForInteraction: false
+                  };
+                }
+              }
+            }
+          }
+
+          return {
+            ...state,
+            tabStates: {
+              ...state.tabStates,
+              [tabId]: {
+                ...updatedState,
+                persistentOutput: newPersistent,
+                output: [...(currentState.output || []), output],
+                outputTimestamps: [...currentTimestamps, timestamp],
+                lastOutputUpdate: timestamp
               }
             }
           };

@@ -23,7 +23,6 @@ export interface TargetInfo {
   id: string;
   name: string;
   host: string;
-  port?: number;
   description?: string;
 }
 
@@ -164,8 +163,7 @@ class ExecutionHistoryService {
       targets: (scenario.targets || []).map((target, index) => ({
         id: target._id || `target-${index}`,
         name: target.name || `Target ${index + 1}`,
-        host: target.host,
-        port: target.port
+        host: target.host
       }))
     };
 

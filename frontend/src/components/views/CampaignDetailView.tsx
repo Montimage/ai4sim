@@ -21,6 +21,7 @@ import CreateScenarioModal from '../features/Scenarios/CreateScenarioModal';
 import { Card } from '../shared/UI/Card';
 import { Button } from '../shared/UI/Button';
 import { StatusBadge } from '../shared/UI/StatusBadge';
+import { websocket } from '../../services/websocket';
 
 export const CampaignDetailView: React.FC = () => {
   const { projectId, campaignId } = useParams<{ projectId: string; campaignId: string }>();
@@ -53,6 +54,38 @@ export const CampaignDetailView: React.FC = () => {
       return;
     }
   }, [projectId, campaignId, navigate]);
+
+  // WebSocket listener for campaign updates
+  useEffect(() => {
+    if (!campaignId) return;
+
+    const handleCampaignUpdate = (data: any) => {
+      if (data.campaignId === campaignId) {
+        console.log('🔄 Campaign update received via WebSocket:', data);
+        // Reload campaign data when updates are received
+        loadData();
+      }
+    };
+
+    const handleScenarioUpdate = (data: any) => {
+      if (data.campaignId === campaignId) {
+        console.log('🔄 Scenario update received via WebSocket:', data);
+        // Reload scenarios when updates are received
+        if (projectId && campaignId) {
+          loadScenariosByProject(projectId, campaignId);
+        }
+      }
+    };
+
+    // Subscribe to WebSocket events
+    websocket.on('campaign-update', handleCampaignUpdate);
+    websocket.on('scenario-update', handleScenarioUpdate);
+
+    return () => {
+      websocket.off('campaign-update', handleCampaignUpdate);
+      websocket.off('scenario-update', handleScenarioUpdate);
+    };
+  }, [campaignId, projectId, loadScenariosByProject]);
 
   const loadData = async () => {
     setIsLoadingData(true);
@@ -129,7 +162,7 @@ export const CampaignDetailView: React.FC = () => {
 
   const handleExecuteScenario = (scenarioId?: string) => {
     if (scenarioId && projectId && campaignId) {
-    navigate(`/projects/${projectId}/campaigns/${campaignId}/scenarios/${scenarioId}/execution`);
+      navigate(`/projects/${projectId}/campaigns/${campaignId}/scenarios/${scenarioId}/configure`);
     }
   };
 
@@ -335,7 +368,7 @@ export const CampaignDetailView: React.FC = () => {
                   key={scenario._id}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-                className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-700 transition-colors cursor-pointer"
+                className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
                 onClick={() => handleViewScenario(scenario._id)}
               >
                 <div className="flex items-start justify-between mb-3">

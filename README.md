@@ -9,7 +9,7 @@
 
 **AI4SIM Dashboard** is a comprehensive web platform designed for managing and executing cybersecurity tests and attack simulations. This full-stack solution combines an intuitive user interface with a robust backend to orchestrate automated penetration testing campaigns.
 
- ⚠️ **Important Note: For Educational and Research Purposes**
+⚠️ **Important Note: For Educational and Research Purposes**
 
 This project is designed **solely for educational and research purposes**. It's intended for use in controlled environments to study and understand cybersecurity principles, perform security testing, and simulate attacks in a **safe and ethical manner**. **Under no circumstances should this software be used for malicious activities or without explicit authorization.** Users are solely responsible for ensuring their actions comply with all applicable laws and ethical guidelines.
 
@@ -20,8 +20,12 @@ This project is designed **solely for educational and research purposes**. It's 
 - **📊 Real-Time Monitoring**: Live surveillance via WebSocket connections
 - **🔐 Advanced Security**: Granular permission system with comprehensive audit trails
 - **📱 Modern Interface**: Responsive design with dark/light mode support
-- **🔧 Integrated Tools**: Native support for Caldera, MAIP, Shennina, and Kali Linux tools
 - **📈 Detailed Reports**: Automatic PDF report generation with comprehensive analysis
+- **🤖 Autonomous Agents**: Intelligent agent system for automated test orchestration
+- **🧠 Artificial Intelligence**: AI integration for analysis and recommendation generation
+- **👥 Collaborative Management**: Advanced collaboration tools for security teams
+- **🐳 Containerization**: Docker support for simplified deployment and tool isolation
+- **🔄 Intelligent Orchestration**: Automated coordination of multi-tool campaigns
 
 ## 🏗️ Architecture
 
@@ -48,6 +52,7 @@ This project is designed **solely for educational and research purposes**. It's 
 - **MongoDB** 5.0 or higher
 - **npm** or **yarn** package manager
 - **Git** version control
+- **Docker** (optional, for containerization)
 
 ## 🛠️ Installation
 
@@ -75,15 +80,11 @@ MONGODB_URI=mongodb://localhost:27017/ai4sim-dashboard
 
 # Security Settings
 JWT_SECRET=your-very-secure-secret-key-change-this
-JWT_EXPIRES_IN=24h
 
 # Server Configuration
 PORT=3000
 WS_PORT=9090
 HOST=localhost
-
-# Environment
-NODE_ENV=development
 
 # Logging
 LOG_LEVEL=info
@@ -110,9 +111,8 @@ npm run init-super-admin
 ```
 
 **Default Credentials:**
-- Username: `superadmin`
-- Email: `admin@ai4sim-dashboard.com`
-- Password: `SuperAdmin123!`
+- Username: `admin`
+- Password: `admin123456`
 
 ⚠️ **Important**: Change the default password on first login!
 
@@ -185,17 +185,6 @@ npm run reset-users          # Reset user database
 
 ## 🛡️ Security & Permissions
 
-### Role-Based Access Control
-
-- **super_admin**: Complete system access and user management
-- **admin**: User administration and system configuration
-- **project_manager**: Project and team management
-- **security_analyst**: Test analysis and execution
-- **user**: Standard user with limited access
-- **viewer**: Read-only access to assigned projects
-
-### Security Features
-
 - JWT-based secure authentication
 - bcrypt password hashing
 - Session management with IP tracking
@@ -224,6 +213,25 @@ AI4SIM Dashboard supports integration with various security tools:
 - **Caldera**: Adversary simulation framework
 - **MAIP**: Montimage Attack Injection Platform
 - **Shennina**: Specialized security testing tool
+- **KNX Smart Fuzzer**: KNX and smart building security testing
+- **GAN Fuzzer**: AI-based fuzzing tool for vulnerability discovery
+
+## 🏗️ Project Structure
+
+```
+ai4sim-dashboard/
+├── frontend/              # React Interface
+├── backend/               # Node.js API
+├── tools/                 # Integrated tools
+│   ├── caldera/          # Caldera Framework
+│   ├── maip/             # MAIP Platform
+│   ├── shennina/         # Shennina Tool
+│   └── knxsmartfuzzer/   # KNX Smart Fuzzer
+├── scripts/              # Utility scripts
+├── docs/                 # Documentation
+├── env.example           # Configuration example
+└── package.json          # Main dependencies
+```
 
 ## 🐛 Troubleshooting
 
@@ -259,6 +267,16 @@ Logs are available in:
 - `backend/error.log` - Error logs
 - Console output during development
 
+## 🐳 Docker Deployment
+
+```bash
+# Build Docker image
+docker build -t ai4sim-dashboard .
+
+# Run with Docker Compose
+docker-compose up -d
+```
+
 ## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
@@ -266,6 +284,15 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## 👥 Development Team
 
 **AI4SIM Dashboard** is developed by Montimage as part of the AI4SIM project, focusing on advanced cybersecurity simulation and testing capabilities.
+
+**Lead Developer**: Mohamed Hamdouni  
+**Organization**: [Montimage](https://github.com/Montimage)  
+**Project**: AI4CYBER (Horizon Europe, 2024-2025)
+
+### Development Context
+This project was developed as part of the European AI4CYBER project (Horizon Europe) over a 12-month period, evolving from an initial prototype to a complete platform integrating artificial intelligence, autonomous agents, and containerization.
+
+For more technical details and context, see the attached internship report.
 
 ## 📞 Support & Information
 
@@ -276,4 +303,4 @@ For technical information and updates, visit the [Montimage AI4SIM repository](h
 **Version**: 1.0.0  
 **Status**: Production Ready  
 **Organization**: [Montimage](https://github.com/Montimage)  
-**Last Updated**: June 2025 
+**Last Updated**: September 2025

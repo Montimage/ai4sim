@@ -39,6 +39,9 @@ interface WSMessage {
     parameters?: Record<string, any>;
     tabId?: string;
     port?: number;
+    tool?: string;
+    ports?: number[];
+    containers?: string[];
     projectId?: string;
     campaignId?: string;
     scenarioId?: string;
@@ -47,6 +50,14 @@ interface WSMessage {
     terminalId?: string;
     executionId?: string;
     outputId?: string;
+    steps?: Array<{
+        id: string;
+        name: string;
+        command: string;
+        workingDirectory?: string;
+        successMessage?: string;
+        dependsOn?: string;
+    }>;
 }
 
 export class WebSocketManager extends EventEmitter {
@@ -128,34 +139,47 @@ export class WebSocketManager extends EventEmitter {
 
             ws.on('message', async (message: string) => {
                 const messageStr = message.toString();
-                logger.info(`[DEBUG-WS-MSG] Received message: ${messageStr}`);
-                console.log(`[DEBUG-WS-MSG] Received message: ${messageStr}`);
                 
+                // Mettre à jour l'activité du client pour tous les messages
+                if (client) {
+                    client.lastActivity = new Date();
+                }
+                
+                // Gestion des pings/pongs
                 if (messageStr === 'ping') {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send('pong');
+                        // Mettre à jour l'activité du client
+                        if (client) {
+                            client.lastActivity = new Date();
+                        }
                     }
                     return;
                 }
                 if (messageStr === 'pong') {
+                    // Mettre à jour l'activité du client
+                    if (client) {
+                        client.lastActivity = new Date();
+                    }
                     return;
                 }
 
                 let parsedData: WSMessage | null = null;
                 try {
                     parsedData = JSON.parse(messageStr) as WSMessage;
-                    logger.info(`[DEBUG-WS-MSG] Parsed message type: ${parsedData?.type}`);
-                    console.log(`[DEBUG-WS-MSG] Parsed message type: ${parsedData?.type}`);
                     
                     if (!parsedData) {
                         throw new Error('Invalid message format');
                     }
 
+                    // Mettre à jour l'activité du client pour les messages JSON
+                    if (client) {
+                        client.lastActivity = new Date();
+                    }
+
                     // Gérer les messages liés aux terminaux et à l'historique
                     switch (parsedData.type) {
                         case 'subscribe-scenario':
-                            logger.info(`[DEBUG-WS-MSG] Processing subscribe-scenario for: ${parsedData.scenarioId}`);
-                            console.log(`[DEBUG-WS-MSG] Processing subscribe-scenario for: ${parsedData.scenarioId}`);
                             if (parsedData.scenarioId) {
                                 this.subscribeToScenario(ws, parsedData.scenarioId);
                                 this.addExecutionHistoryEntry(parsedData.scenarioId, {
@@ -167,8 +191,6 @@ export class WebSocketManager extends EventEmitter {
                             break;
 
                         case 'unsubscribe-scenario':
-                            logger.info(`[DEBUG-WS-MSG] Processing unsubscribe-scenario for: ${parsedData.scenarioId}`);
-                            console.log(`[DEBUG-WS-MSG] Processing unsubscribe-scenario for: ${parsedData.scenarioId}`);
                             if (parsedData.scenarioId) {
                                 this.unsubscribeFromScenario(ws, parsedData.scenarioId);
                             }
@@ -182,7 +204,6 @@ export class WebSocketManager extends EventEmitter {
                         case 'get_scenario_info':
                             // Demande d'informations sur un scénario
                             if (parsedData.scenarioId) {
-                                logger.info(`Scenario info requested for: ${parsedData.scenarioId}`);
                                 // Envoyer les informations du scénario si disponibles
                                 this.sendScenarioInfo(ws, parsedData.scenarioId);
                             }
@@ -282,7 +303,6 @@ export class WebSocketManager extends EventEmitter {
                                 parameters || {},
                                 tabId,
                                 (output: string) => {
-                                    console.log(`[DEBUG-WS-OUTPUT] Sending output for tab ${tabId}:`, output);
                                     client.send({
                                         type: 'output',
                                         payload: output,
@@ -299,7 +319,6 @@ export class WebSocketManager extends EventEmitter {
                                     }
                                 },
                                 (error: string) => {
-                                    console.log(`[DEBUG-WS-ERROR] Sending error for tab ${tabId}:`, error);
                                     client.send({
                                         type: 'error',
                                         payload: error,
@@ -328,20 +347,65 @@ export class WebSocketManager extends EventEmitter {
                         }
 
                         case 'stop': {
-                            const { tabId, port, scenarioId } = parsedData;
+                            const { tabId, port, scenarioId, tool, ports, containers } = parsedData;
                             if (!tabId) {
                                 throw new Error('tabId is required for stop command');
                             }
                             
-                            await this.processManager?.stopProcess(tabId, port);
-                            // Removed automatic "Process stopped" message - ProcessManager handles this
+                            // Gérer l'arrêt spécifique pour MAIP et Caldera
+                            if (tool === 'maip' && ports && containers) {
+                                client.send({
+                                    type: 'output',
+                                    payload: '🛑 Stopping MAIP services...',
+                                    tabId
+                                });
+                                
+                                await this.processManager?.stopMAIPServices(tabId, ports, containers, (message: string) => {
+                                    client.send({
+                                        type: 'output',
+                                        payload: message,
+                                        tabId
+                                    });
+                                });
+                                
+                                // Envoyer confirmation d'arrêt
+                                client.send({
+                                    type: 'stopped',
+                                    tool: 'maip',
+                                    tabId
+                                });
+                            } else if (tool === 'caldera' && ports) {
+                                client.send({
+                                    type: 'output',
+                                    payload: '🛑 Stopping Caldera service...',
+                                    tabId
+                                });
+                                
+                                await this.processManager?.stopCalderaService(tabId, ports[0], (message: string) => {
+                                    client.send({
+                                        type: 'output',
+                                        payload: message,
+                                        tabId
+                                    });
+                                });
+                                
+                                // Envoyer confirmation d'arrêt
+                                client.send({
+                                    type: 'stopped',
+                                    tool: 'caldera',
+                                    tabId
+                                });
+                            } else {
+                                // Arrêt standard pour les autres outils
+                                await this.processManager?.stopProcess(tabId, port);
+                            }
                             
                             // Ajouter à l'historique si c'est un scénario
                             if (scenarioId) {
                                 this.addExecutionHistoryEntry(scenarioId, {
                                     id: `stop-${Date.now()}`,
                                     type: 'complete',
-                                    data: { action: 'process_stopped', tabId }
+                                    data: { action: 'process_stopped', tabId, tool: tool || 'unknown' }
                                 });
                             }
                             break;
@@ -453,6 +517,32 @@ export class WebSocketManager extends EventEmitter {
                           }
                           break;
 
+                        case "execute-sequential":
+                          try {
+                            const { steps, tabId, parameters } = parsedData;
+                            
+                            if (!steps || !Array.isArray(steps) || !tabId) {
+                              ws.send(JSON.stringify({
+                                type: "error",
+                                payload: "Missing required parameters for sequential execution",
+                                tabId
+                              }));
+                              return;
+                            }
+
+                            // Exécuter les étapes séquentiellement
+                            await this.executeSequentialSteps(steps, tabId, parameters || {}, client);
+                          } catch (error) {
+                            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                            logger.error(`Sequential execution error: ${errorMessage}`);
+                            ws.send(JSON.stringify({
+                              type: "error",
+                              payload: errorMessage,
+                              tabId: parsedData.tabId
+                            }));
+                          }
+                          break;
+
                         default:
                             logger.warn(`Unknown message type: ${parsedData.type}`);
                     }
@@ -532,24 +622,20 @@ export class WebSocketManager extends EventEmitter {
     // Méthodes pour gérer l'historique des scénarios
     public subscribeToScenario(ws: WebSocket, scenarioId: string): void {
         logger.info(`[DEBUG-WS-SUB] Client subscribing to scenario: ${scenarioId}`);
-        console.log(`[DEBUG-WS-SUB] Client subscribing to scenario: ${scenarioId}`);
         
         const client = this.clients.get(ws);
         if (!client) {
             logger.error(`[DEBUG-WS-SUB] Client not found for subscription`);
-            console.log(`[DEBUG-WS-SUB] Client not found for subscription`);
             return;
         }
 
         logger.info(`[DEBUG-WS-SUB] Adding scenario to client ${client.id} subscriptions`);
-        console.log(`[DEBUG-WS-SUB] Adding scenario to client ${client.id} subscriptions`);
         client.subscribedScenarios.add(scenarioId);
         
         // Créer ou récupérer le terminal de scénario
         let scenarioTerminal = this.scenarioTerminals.get(scenarioId);
         if (!scenarioTerminal) {
             logger.info(`[DEBUG-WS-SUB] Creating new scenario terminal for: ${scenarioId}`);
-            console.log(`[DEBUG-WS-SUB] Creating new scenario terminal for: ${scenarioId}`);
             scenarioTerminal = {
                 id: scenarioId,
                 activeTerminals: new Set(),
@@ -560,14 +646,12 @@ export class WebSocketManager extends EventEmitter {
             };
             this.scenarioTerminals.set(scenarioId, scenarioTerminal);
             logger.info(`[DEBUG-WS-SUB] Created scenario terminal successfully`);
-            console.log(`[DEBUG-WS-SUB] Created scenario terminal successfully`);
         }
         
         scenarioTerminal.subscribers.add(ws);
         scenarioTerminal.lastActivity = Date.now();
         
         logger.info(`[DEBUG-WS-SUB] Scenario ${scenarioId} now has ${scenarioTerminal.subscribers.size} subscribers`);
-        console.log(`[DEBUG-WS-SUB] Scenario ${scenarioId} now has ${scenarioTerminal.subscribers.size} subscribers`);
         
         // Confirmer l'abonnement sans envoyer l'historique automatiquement
         if (ws.readyState === WebSocket.OPEN) {
@@ -593,12 +677,10 @@ export class WebSocketManager extends EventEmitter {
 
     private sendExecutionHistory(ws: WebSocket, scenarioId: string): void {
         logger.info(`[DEBUG-WS-HISTORY] Explicit request for execution history for scenario: ${scenarioId}`);
-        console.log(`[DEBUG-WS-HISTORY] Explicit request for execution history for scenario: ${scenarioId}`);
         
         const scenarioTerminal = this.scenarioTerminals.get(scenarioId);
         if (!scenarioTerminal || ws.readyState !== WebSocket.OPEN) {
             logger.info(`[DEBUG-WS-HISTORY] Cannot send history - terminal not found or connection closed`);
-            console.log(`[DEBUG-WS-HISTORY] Cannot send history - terminal not found or connection closed`);
             return;
         }
 
@@ -606,7 +688,6 @@ export class WebSocketManager extends EventEmitter {
         const recentHistory = scenarioTerminal.executionHistory; // Removed slice(-10) to keep complete history
         
         logger.info(`[DEBUG-WS-HISTORY] Sending ${recentHistory.length} history entries`);
-        console.log(`[DEBUG-WS-HISTORY] Sending ${recentHistory.length} history entries`);
         
         ws.send(JSON.stringify({
             type: 'execution-history',
@@ -649,24 +730,20 @@ export class WebSocketManager extends EventEmitter {
     private broadcastToScenarioSubscribers(scenarioId: string, data: any): void {
         const scenarioTerminal = this.scenarioTerminals.get(scenarioId);
         if (!scenarioTerminal) {
-            console.log(`[DEBUG-WS] No scenario terminal found for ${scenarioId}`);
             return;
         }
 
-        console.log(`[DEBUG-WS] Broadcasting to ${scenarioTerminal.subscribers.size} subscribers for scenario ${scenarioId}:`, data);
         const message = JSON.stringify(data);
         
         scenarioTerminal.subscribers.forEach((ws) => {
             if (ws.readyState === WebSocket.OPEN) {
                 try {
-                    console.log(`[DEBUG-WS] Sending message to subscriber:`, message);
                     ws.send(message);
                 } catch (error) {
                     logger.error(`Error sending message to scenario subscriber: ${error}`);
                     scenarioTerminal.subscribers.delete(ws);
                 }
             } else {
-                console.log(`[DEBUG-WS] Removing closed WebSocket connection`);
                 scenarioTerminal.subscribers.delete(ws);
             }
         });
@@ -679,8 +756,6 @@ export class WebSocketManager extends EventEmitter {
     }
 
     public broadcastScenarioUpdate(scenarioId: string, data: any): void {
-        console.log(`[DEBUG-WS] Broadcasting scenario update for ${scenarioId}:`, data);
-        
         this.addExecutionHistoryEntry(scenarioId, {
             id: `update-${Date.now()}`,
             type: 'output',
@@ -694,7 +769,6 @@ export class WebSocketManager extends EventEmitter {
             timestamp: Date.now()
         };
         
-        console.log(`[DEBUG-WS] Formatted message:`, message);
         this.broadcastToScenarioSubscribers(scenarioId, message);
     }
 
@@ -714,6 +788,283 @@ export class WebSocketManager extends EventEmitter {
                 }
             }
         });
+    }
+
+    private async executeSequentialSteps(
+        steps: Array<{
+            id: string;
+            name: string;
+            command: string;
+            workingDirectory?: string;
+            successMessage?: string;
+            dependsOn?: string;
+        }>,
+        tabId: string,
+        parameters: Record<string, any>,
+        client: WSClient
+    ): Promise<void> {
+        const completedSteps = new Set<string>();
+        const stepOutputs = new Map<string, string[]>();
+        
+        // Vérifier si les services MAIP sont déjà en cours d'exécution
+        const checkMAIPServices = async () => {
+            const systemController = new (await import('../controllers/SystemController')).SystemController();
+            
+            // Vérifier le serveur MAIP (port 31057)
+            const serverCheck = await systemController.checkPort(31057);
+            if (serverCheck.isInUse) {
+                client.send({
+                    type: 'output',
+                    payload: `🟢 MAIP Server is already running on port 31057`,
+                    outputId: 'server',
+                    tabId
+                });
+                completedSteps.add('server');
+            }
+            
+            // Vérifier le client MAIP (port 3001)
+            const clientCheck = await systemController.checkPort(3001);
+            if (clientCheck.isInUse) {
+                client.send({
+                    type: 'output',
+                    payload: `🟢 MAIP Client is already running on port 3001`,
+                    outputId: 'client',
+                    tabId
+                });
+                client.send({
+                    type: 'output',
+                    payload: `✅ Compiled successfully!`,
+                    outputId: 'client',
+                    tabId
+                });
+                completedSteps.add('client');
+                
+                // Si les deux services sont déjà actifs, basculer directement vers l'interface
+                if (serverCheck.isInUse) {
+                    setTimeout(() => {
+                        client.send({
+                            type: 'output',
+                            payload: `🖼️ MAIP services already active, switching to interface...`,
+                            outputId: 'client',
+                            tabId
+                        });
+                        
+                        setTimeout(() => {
+                            client.send({
+                                type: 'iframe-ready',
+                                tabId,
+                                port: 3001,
+                                message: 'MAIP interface is ready!'
+                            });
+                        }, 1000);
+                    }, 100);
+                }
+            }
+        };
+        
+        // Vérifier les services MAIP au début si les étapes contiennent 'server' et 'client'
+        const hasMAIPSteps = steps.some(step => step.id === 'server' || step.id === 'client');
+        if (hasMAIPSteps) {
+            await checkMAIPServices();
+        }
+        
+        // Fonction pour vérifier si une étape peut être exécutée
+        const canExecuteStep = (step: any) => {
+            return !step.dependsOn || completedSteps.has(step.dependsOn);
+        };
+        
+        // Fonction pour exécuter une étape
+        const executeStep = async (step: any): Promise<boolean> => {
+            return new Promise((resolve) => {
+                const stepTabId = `${tabId}-${step.id}`;
+                let stepOutput: string[] = [];
+                stepOutputs.set(step.id, stepOutput);
+                let stepCompleted = false;
+                
+                client.send({
+                    type: 'output',
+                    payload: `🚀 Starting ${step.name}...`,
+                    outputId: step.id,
+                    tabId
+                });
+                
+                this.processManager?.startProcess(
+                    step.command,
+                    parameters,
+                    stepTabId,
+                    (output: string) => {
+                        stepOutput.push(output);
+                        client.send({
+                            type: 'output',
+                            payload: output,
+                            outputId: step.id,
+                            tabId
+                        });
+                        
+                        // Vérifier si c'est le message de succès et si l'étape n'est pas déjà terminée
+                        if (step.successMessage && output.includes(step.successMessage) && !stepCompleted) {
+                            stepCompleted = true;
+                            completedSteps.add(step.id);
+                            client.send({
+                                type: 'step-completed',
+                                stepId: step.id,
+                                stepName: step.name,
+                                tabId
+                            });
+                            
+                            // Pour MAIP client avec "Compiled successfully!", attendre 1 seconde puis basculer sur l'interface
+                            if (step.id === 'client' && step.successMessage === 'Compiled successfully!') {
+                                console.log(`[SEQUENTIAL] MAIP client detected with success message: "${step.successMessage}"`);
+                                
+                                client.send({
+                                    type: 'output',
+                                    payload: `✅ ${step.name} compilation completed successfully!`,
+                                    outputId: step.id,
+                                    tabId
+                                });
+                                
+                                setTimeout(() => {
+                                    console.log(`[SEQUENTIAL] Sending switching message for MAIP client`);
+                                    client.send({
+                                        type: 'output',
+                                        payload: `🖼️ Switching to MAIP interface in 1 second...`,
+                                        outputId: step.id,
+                                        tabId
+                                    });
+                                    
+                                    setTimeout(() => {
+                                        if (stepCompleted) {
+                                            console.log(`[SEQUENTIAL] Sending iframe-ready event for MAIP client on port 3001`);
+                                            client.send({
+                                                type: 'iframe-ready',
+                                                tabId,
+                                                port: 3001,
+                                                message: 'MAIP interface is ready!'
+                                            });
+                                            resolve(true);
+                                        } else {
+                                            console.log(`[SEQUENTIAL] Step not completed, skipping iframe-ready`);
+                                        }
+                                    }, 1000); // Délai d'1 seconde avant de basculer sur l'interface
+                                }, 100);
+                            } else {
+                                console.log(`[SEQUENTIAL] Regular step completion for ${step.id} with message: "${step.successMessage}"`);
+                                // Pour les autres étapes, continuer normalement
+                                setTimeout(() => {
+                                    if (stepCompleted) {
+                                        resolve(true);
+                                    }
+                                }, 1000); // Petit délai pour s'assurer que le message est bien traité
+                            }
+                        }
+                    },
+                    (error: string) => {
+                        stepOutput.push(`ERROR: ${error}`);
+                        client.send({
+                            type: 'error',
+                            payload: error,
+                            outputId: step.id,
+                            tabId
+                        });
+                        if (!stepCompleted) {
+                            resolve(false);
+                        }
+                    },
+                    (notification: { level: string, message: string }) => {
+                        client.send({
+                            type: 'notification',
+                            ...notification,
+                            outputId: step.id,
+                            tabId
+                        });
+                    }
+                ).catch((error) => {
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                    client.send({
+                        type: 'error',
+                        payload: errorMessage,
+                        outputId: step.id,
+                        tabId
+                    });
+                    if (!stepCompleted) {
+                        resolve(false);
+                    }
+                });
+                
+                // Timeout de sécurité pour éviter d'attendre indéfiniment
+                setTimeout(() => {
+                    if (!stepCompleted) {
+                        // Si aucun message de succès n'est défini, considérer l'étape comme réussie après un délai
+                        if (!step.successMessage) {
+                            completedSteps.add(step.id);
+                            client.send({
+                                type: 'step-completed',
+                                stepId: step.id,
+                                stepName: step.name,
+                                tabId
+                            });
+                            resolve(true);
+                        } else {
+                            // Timeout pour les étapes avec message de succès
+                            client.send({
+                                type: 'error',
+                                payload: `Timeout waiting for success message: "${step.successMessage}" for step ${step.name}`,
+                                outputId: step.id,
+                                tabId
+                            });
+                            resolve(false);
+                        }
+                    }
+                }, 60000); // Timeout de 60 secondes
+            });
+        };
+        
+        // Exécuter les étapes dans l'ordre de dépendance
+        const pendingSteps = [...steps.filter(step => !completedSteps.has(step.id))];
+        
+        while (pendingSteps.length > 0) {
+            const readySteps = pendingSteps.filter(canExecuteStep);
+            
+            if (readySteps.length === 0) {
+                // Aucune étape prête, vérifier les dépendances circulaires
+                const remainingStepIds = pendingSteps.map(s => s.id);
+                client.send({
+                    type: 'error',
+                    payload: `Circular dependency detected or missing dependencies for steps: ${remainingStepIds.join(', ')}`,
+                    tabId
+                });
+                break;
+            }
+            
+            // Exécuter la première étape prête
+            const stepToExecute = readySteps[0];
+            console.log(`[SEQUENTIAL] Executing step: ${stepToExecute.id} (${stepToExecute.name})`);
+            const success = await executeStep(stepToExecute);
+            
+            // Retirer l'étape de la liste des étapes en attente
+            const stepIndex = pendingSteps.findIndex(s => s.id === stepToExecute.id);
+            if (stepIndex !== -1) {
+                pendingSteps.splice(stepIndex, 1);
+            }
+            
+            if (!success) {
+                client.send({
+                    type: 'error',
+                    payload: `Step ${stepToExecute.name} failed, stopping sequential execution`,
+                    tabId
+                });
+                break;
+            }
+        }
+        
+        // Notifier la fin de l'exécution séquentielle
+        if (completedSteps.size === steps.length) {
+            client.send({
+                type: 'sequential-completed',
+                completedSteps: Array.from(completedSteps),
+                tabId
+            });
+        }
     }
 
     private cleanup(): void {

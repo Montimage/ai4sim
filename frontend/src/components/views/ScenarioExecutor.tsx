@@ -401,7 +401,7 @@ const ScenarioExecutor: React.FC = () => {
                       <div key={index} className="px-3 py-2 bg-gray-700 rounded-md">
                         <div className="flex justify-between">
                           <span className="font-medium text-white">{target.host}</span>
-                          <span className="text-sm text-gray-400">{target.protocol}://{target.port}</span>
+                          <span className="text-sm text-gray-400">{target.host}</span>
                         </div>
                         {target.description && (
                           <p className="text-sm text-gray-300 mt-1">{target.description}</p>

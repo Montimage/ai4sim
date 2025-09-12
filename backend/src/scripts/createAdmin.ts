@@ -7,7 +7,7 @@ const createAdmin = async () => {
   try {
     await mongoose.connect(config.mongodb.uri);
     
-    const password = 'admin123'; // Change this in production
+    const password = process.env.ADMIN_PASSWORD || 'ChangeMe123!'; // Change this via environment variable
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const admin = new User({

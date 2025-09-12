@@ -18,9 +18,9 @@ export class UserManagementController {
       };
 
       // Validation des données
-      if (!userData.username || !userData.email || !userData.password) {
+      if (!userData.username || !userData.password) {
         return res.status(400).json({
-          message: 'Username, email and password are required',
+          message: 'Username and password are required',
           code: 'VALIDATION_ERROR'
         });
       }
@@ -30,15 +30,6 @@ export class UserManagementController {
         return res.status(400).json({
           message: 'Password must be at least 8 characters long',
           code: 'WEAK_PASSWORD'
-        });
-      }
-
-      // Validation de l'email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(userData.email)) {
-        return res.status(400).json({
-          message: 'Invalid email format',
-          code: 'INVALID_EMAIL'
         });
       }
 
@@ -144,17 +135,6 @@ export class UserManagementController {
       const { userId } = req.params;
       const currentUser = req.user as IUser;
       const updateData: UpdateUserData = req.body;
-
-      // Validation de l'email si fourni
-      if (updateData.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(updateData.email)) {
-          return res.status(400).json({
-            message: 'Invalid email format',
-            code: 'INVALID_EMAIL'
-          });
-        }
-      }
 
       const user = await UserManagementService.updateUser(userId, updateData, currentUser._id);
       
@@ -537,17 +517,6 @@ export class UserManagementController {
       delete updateData.permissions;
       delete updateData.isActive;
 
-      // Validation de l'email si fourni
-      if (updateData.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(updateData.email)) {
-          return res.status(400).json({
-            message: 'Invalid email format',
-            code: 'INVALID_EMAIL'
-          });
-        }
-      }
-
       const user = await UserManagementService.updateUser(currentUser._id, updateData, currentUser._id);
       
       return res.json({
@@ -566,6 +535,95 @@ export class UserManagementController {
       
       return res.status(500).json({
         message: 'Failed to update profile',
+        code: 'INTERNAL_ERROR'
+      });
+    }
+  }
+
+  /**
+   * Mettre à jour les permissions d'un utilisateur
+   */
+  async updateUserPermissions(req: PermissionRequest, res: Response): Promise<Response> {
+    try {
+      const { userId } = req.params;
+      const currentUser = req.user as IUser;
+      const { permissions } = req.body;
+
+      if (!permissions || !Array.isArray(permissions)) {
+        return res.status(400).json({
+          message: 'Permissions array is required',
+          code: 'VALIDATION_ERROR'
+        });
+      }
+
+      const user = await UserManagementService.updateUserPermissions(userId, permissions, currentUser._id);
+      
+      return res.json({
+        message: 'User permissions updated successfully',
+        user
+      });
+    } catch (error) {
+      logger.error('Error in updateUserPermissions:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('not found')) {
+          return res.status(404).json({
+            message: error.message,
+            code: 'USER_NOT_FOUND'
+          });
+        }
+      }
+      
+      return res.status(500).json({
+        message: 'Failed to update user permissions',
+        code: 'INTERNAL_ERROR'
+      });
+    }
+  }
+
+  /**
+   * Mettre à jour les rôles personnalisés d'un utilisateur
+   */
+  async updateUserCustomRoles(req: PermissionRequest, res: Response): Promise<Response> {
+    try {
+      const { userId } = req.params;
+      const currentUser = req.user as IUser;
+      const { customRoles } = req.body;
+
+      if (!customRoles || !Array.isArray(customRoles)) {
+        return res.status(400).json({
+          message: 'Custom roles array is required',
+          code: 'VALIDATION_ERROR'
+        });
+      }
+
+      const user = await UserManagementService.updateUserCustomRoles(userId, customRoles, currentUser._id);
+      
+      return res.json({
+        message: 'User custom roles updated successfully',
+        user
+      });
+    } catch (error) {
+      logger.error('Error in updateUserCustomRoles:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('not found')) {
+          return res.status(404).json({
+            message: error.message,
+            code: 'USER_NOT_FOUND'
+          });
+        }
+        
+        if (error.message.includes('do not exist')) {
+          return res.status(400).json({
+            message: error.message,
+            code: 'INVALID_ROLES'
+          });
+        }
+      }
+      
+      return res.status(500).json({
+        message: 'Failed to update user custom roles',
         code: 'INTERNAL_ERROR'
       });
     }

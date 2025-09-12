@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProjectStore } from '../../store/projectStore';
 import { useNotificationStore } from '../../store/notificationStore';
-import { useProjectManagementStore } from '../../store/projectManagementStore';
 import { useThemeStore } from '../../store/themeStore';
 import { Card } from '../shared/UI/Card';
 import { Button } from '../shared/UI/Button';
@@ -23,37 +22,22 @@ import {
   XMarkIcon,
   UserPlusIcon
 } from '@heroicons/react/24/outline';
-import { Project, Campaign } from '../../types/project';
-
-interface ProjectUser {
-  _id: string;
-  username: string;
-  role: 'owner' | 'editor' | 'viewer';
-}
-
-interface ProjectSettings {
-  _id: string;
-  name: string;
-  description: string;
-  users: ProjectUser[];
-}
+import { Campaign, ProjectSettings, ProjectUser, SystemRole } from '../../types/project';
 
 export const ProjectDetailView: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const theme = useThemeStore(state => state.theme);
-  const { projects, fetchProjects, deleteProject } = useProjectStore();
+  const { currentProject, fetchProjects, deleteProject, selectProject, addCampaign } = useProjectStore();
   const { addNotification } = useNotificationStore();
-  const { createCampaign } = useProjectManagementStore();
   
-  const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectSettings | null>(null);
   const [newUsername, setNewUsername] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'owner' | 'editor'>('editor');
+  const [newUserRole, setNewUserRole] = useState<SystemRole>('user');
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const [userValidation, setUserValidation] = useState<{
     isValid: boolean | null;
@@ -68,98 +52,29 @@ export const ProjectDetailView: React.FC = () => {
         return;
       }
       
-      console.log('🔍 loadProject called', {
-        projectId,
-        projectsLength: projects.length,
-        projects: projects.map(p => ({ _id: p._id, name: p.name }))
-      });
+      console.log('🔍 loadProject called', { projectId });
       
       try {
         setLoading(true);
-        console.log('📡 Fetching projects...');
-        await fetchProjects();
-        
-        // Attendre un peu pour que le store soit mis à jour
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log('✅ Projects fetched, looking for project:', projectId);
-        
-        // Récupérer les projets directement depuis le store après la mise à jour
-        const currentProjects = useProjectStore.getState().projects;
-        const foundProject = currentProjects.find(p => p._id === projectId);
-        
-        console.log('🔍 Project search result:', {
-          foundProject: foundProject ? { _id: foundProject._id, name: foundProject.name } : null,
-          searchedId: projectId,
-          availableProjects: currentProjects.map(p => ({ _id: p._id, name: p.name }))
-        });
-        
-        if (foundProject) {
-          console.log('✅ Project found, setting project state');
-          setProject(foundProject);
-        } else {
-          console.error('❌ Project not found in projects array');
-          console.log('🔍 Attempting direct API call to get project...');
-          
-          // Try to fetch the project directly from the API
-          const token = localStorage.getItem('token');
-          if (token) {
-            try {
-              const response = await fetch(`/api/projects/${projectId}`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
-              });
-              
-              console.log('📡 Direct API response:', {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok
-              });
-              
-              if (response.ok) {
-                const projectData = await response.json();
-                console.log('✅ Project fetched directly from API:', {
-                  _id: projectData._id,
-                  name: projectData.name
-                });
-                setProject(projectData);
-                return;
-              } else {
-                const errorText = await response.text();
-                console.error('❌ Direct API call failed:', {
-                  status: response.status,
-                  error: errorText
-                });
-              }
-            } catch (apiError) {
-              console.error('❌ Direct API call error:', apiError);
-            }
-          }
-          
-          addNotification({
-            title: 'Project Not Found',
-            message: 'The requested project could not be found',
-            type: 'error',
-            category: 'system'
-          });
-          navigate('/projects');
-        }
+        console.log('📡 Selecting project...');
+        await selectProject(projectId);
+        console.log('✅ Project selected successfully');
       } catch (error) {
         console.error('❌ Error loading project:', error);
         addNotification({
           title: 'Error',
-          message: 'Failed to load project details',
+          message: 'Failed to load project',
           type: 'error',
           category: 'system'
         });
+        navigate('/projects');
       } finally {
         setLoading(false);
       }
     };
 
     loadProject();
-  }, [projectId, projects, fetchProjects, addNotification, navigate]);
+  }, [projectId, selectProject, navigate, addNotification]);
 
   // Validation en temps réel du nom d'utilisateur avec debounce
   useEffect(() => {
@@ -231,13 +146,13 @@ export const ProjectDetailView: React.FC = () => {
   }, [newUsername, selectedProject]);
 
   const handleDeleteProject = async () => {
-    if (!project) return;
+    if (!currentProject) return;
     
     try {
-      await deleteProject(project._id);
+      await deleteProject(currentProject._id);
       addNotification({
         title: 'Project Deleted',
-        message: `Project "${project.name}" has been deleted`,
+        message: `Project "${currentProject.name}" has been deleted`,
         type: 'success',
         category: 'project'
       });
@@ -257,18 +172,18 @@ export const ProjectDetailView: React.FC = () => {
   };
 
   const handleCreateCampaignSubmit = async (campaignData: { name: string; description: string }) => {
-    if (!project) return;
+    if (!currentProject) return;
     
     try {
-      await createCampaign(project._id, campaignData);
+      await addCampaign(campaignData);
       addNotification({
         type: 'success',
         title: 'Campaign Created',
         message: `Campaign "${campaignData.name}" has been created successfully.`,
         category: 'campaign'
       });
-      // Recharger les projets pour afficher la nouvelle campagne
-      await fetchProjects();
+      // Le store met automatiquement à jour le currentProject après la création
+      // Pas besoin d'appeler fetchProjects() car addCampaign met déjà à jour le state
     } catch (error) {
       console.error('Error creating campaign:', error);
       throw error; // Le modal gérera l'erreur
@@ -276,18 +191,18 @@ export const ProjectDetailView: React.FC = () => {
   };
 
   const handleOpenSettings = async () => {
-    if (!project) return;
+    if (!currentProject) return;
     
     // Transform project data to include users with roles
     // Handle case where owner might be just an ID string
     const currentUsername = localStorage.getItem('username') || 'Current User';
     
     let ownerUsername = currentUsername;
-    let ownerId = typeof project.owner === 'string' ? project.owner : project.owner._id;
+    let ownerId = typeof currentProject.owner === 'string' ? currentProject.owner : currentProject.owner._id;
     
     // Si le propriétaire est un objet avec username, l'utiliser
-    if (typeof project.owner === 'object' && project.owner.username) {
-      ownerUsername = project.owner.username;
+    if (typeof currentProject.owner === 'object' && currentProject.owner.username) {
+      ownerUsername = currentProject.owner.username;
     } else {
       // Si c'est juste un ID, récupérer les informations de l'utilisateur
       try {
@@ -310,22 +225,22 @@ export const ProjectDetailView: React.FC = () => {
       }
     }
     
-    const ownerUser = {
+    const ownerUser: ProjectUser = {
       _id: ownerId,
       username: ownerUsername,
-      role: 'owner' as const
+      role: 'admin' // Le propriétaire a le rôle admin par défaut
     };
     
     const projectSettings: ProjectSettings = {
-      _id: project._id,
-      name: project.name,
-      description: project.description || '',
+      _id: currentProject._id,
+      name: currentProject.name,
+      description: currentProject.description || '',
       users: [
         ownerUser,
-        ...(project.sharedWith || []).map((user: any) => ({
+        ...(currentProject.sharedWith || []).map((user: any) => ({
           _id: user.userId || user._id, // Utiliser userId en priorité
           username: user.username || 'User',
-          role: user.role || 'editor' as const
+          role: (user.role || 'user') as SystemRole
         }))
       ]
     };
@@ -338,15 +253,28 @@ export const ProjectDetailView: React.FC = () => {
     if (!newUsername.trim() || !selectedProject || isCheckingUser || userValidation.isValid !== true) return;
     
     const currentUserId = localStorage.getItem('userId');
+    const currentUsername = localStorage.getItem('username');
     
-    // Vérifier les permissions de l'utilisateur actuel
-    // L'utilisateur est owner s'il est soit l'owner du projet, soit dans la liste users avec le rôle owner
-    const currentUserInProject = selectedProject.users?.find(u => u._id === currentUserId);
-    const isProjectOwner = (typeof project?.owner === 'string' && project.owner === currentUserId) || 
-                          (typeof project?.owner === 'object' && project?.owner?._id === currentUserId);
-    const isCurrentUserOwner = isProjectOwner || currentUserInProject?.role === 'owner';
+    // Vérification des permissions - SIMPLIFIÉE ET CORRIGÉE
+    let isCurrentUserOwner = false;
     
-    // Seul le owner peut ajouter des utilisateurs
+    // Vérifier si l'utilisateur actuel est le propriétaire du projet
+    if (currentProject?.owner) {
+      const projectOwnerId = typeof currentProject.owner === 'string' ? currentProject.owner : currentProject.owner._id;
+      isCurrentUserOwner = projectOwnerId === currentUserId;
+    }
+    
+    // Vérifier aussi dans la liste des utilisateurs si il a le rôle admin
+    if (!isCurrentUserOwner && selectedProject.users) {
+      const currentUserInProject = selectedProject.users.find(u => u._id === currentUserId);
+      isCurrentUserOwner = currentUserInProject?.role === 'admin' || currentUserInProject?.role === 'super_admin';
+    }
+    
+    // Vérifier par username si les IDs ne matchent pas
+    if (!isCurrentUserOwner && currentProject?.owner && typeof currentProject.owner === 'object') {
+      isCurrentUserOwner = currentProject.owner.username === currentUsername;
+    }
+    
     if (!isCurrentUserOwner) {
       addNotification({
         type: 'error',
@@ -357,21 +285,12 @@ export const ProjectDetailView: React.FC = () => {
       return;
     }
     
-    console.log('🔍 handleAddUser called', {
-      newUsername: newUsername.trim(),
-      newUserRole,
-      selectedProject: selectedProject ? { _id: selectedProject._id, name: selectedProject.name } : null,
-      isCheckingUser,
-      userValidation
-    });
-    
     setIsCheckingUser(true);
     
     try {
       // Récupérer les informations de l'utilisateur validé
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('❌ No authentication token found');
         addNotification({
           type: 'error',
           title: 'Error',
@@ -381,26 +300,19 @@ export const ProjectDetailView: React.FC = () => {
         return;
       }
       
-      console.log('🔍 Checking user with API:', `/api/users/check/${encodeURIComponent(newUsername.trim())}`);
-      
       const response = await fetch(`/api/users/check/${encodeURIComponent(newUsername.trim())}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      console.log('📡 API Response status:', response.status);
-      
       if (!response.ok) {
-        console.error('❌ API request failed:', response.status, response.statusText);
         throw new Error('Failed to check user');
       }
       
       const data = await response.json();
-      console.log('📋 User check response:', data);
       
       if (!data.exists) {
-        console.warn('❌ User does not exist:', newUsername);
         addNotification({
           type: 'error',
           title: 'User Not Found',
@@ -422,38 +334,19 @@ export const ProjectDetailView: React.FC = () => {
         return;
       }
       
-      // Empêcher d'ajouter un owner si il y en a déjà un
-      if (newUserRole === 'owner') {
-        const currentOwners = selectedProject.users.filter(u => u.role === 'owner');
-        if (currentOwners.length >= 1) {
-          addNotification({
-            type: 'error',
-            title: 'Invalid Role',
-            message: 'A project can only have one owner. Use transfer ownership instead.',
-            category: 'system'
-          });
-          return;
-        }
-      }
-      
       const newUser: ProjectUser = {
         _id: data.user._id,
         username: data.user.username,
         role: newUserRole
       };
       
-      console.log('✅ Adding new user to project:', newUser);
-      console.log('📋 Current users before adding:', selectedProject.users);
-      
       setSelectedProject({
         ...selectedProject,
         users: [...selectedProject.users, newUser]
       });
       
-      console.log('✅ User added to local state');
-      
       setNewUsername('');
-      setNewUserRole('editor');
+      setNewUserRole('user');
       setUserValidation({ isValid: null, message: '', isChecking: false });
       
       addNotification({
@@ -463,7 +356,6 @@ export const ProjectDetailView: React.FC = () => {
         category: 'project'
       });
     } catch (error) {
-      console.error('❌ Error adding user:', error);
       addNotification({
         type: 'error',
         title: 'Error',
@@ -482,9 +374,9 @@ export const ProjectDetailView: React.FC = () => {
     
     // Vérifier les permissions de l'utilisateur actuel
     const currentUserInProject = selectedProject.users?.find(u => u._id === currentUserId);
-    const isProjectOwner = (typeof project?.owner === 'string' && project.owner === currentUserId) || 
-                          (typeof project?.owner === 'object' && project?.owner?._id === currentUserId);
-    const isCurrentUserOwner = isProjectOwner || currentUserInProject?.role === 'owner';
+    const isProjectOwner = (typeof currentProject?.owner === 'string' && currentProject.owner === currentUserId) || 
+                          (typeof currentProject?.owner === 'object' && currentProject?.owner?._id === currentUserId);
+    const isCurrentUserOwner = isProjectOwner || currentUserInProject?.role === 'admin' || currentUserInProject?.role === 'super_admin';
     
     // Seul le owner peut supprimer des utilisateurs
     if (!isCurrentUserOwner) {
@@ -497,9 +389,9 @@ export const ProjectDetailView: React.FC = () => {
       return;
     }
     
-    // Empêcher de supprimer l'owner
+    // Empêcher de supprimer l'admin principal
     const userToRemove = selectedProject.users.find(u => u._id === userId);
-    if (userToRemove?.role === 'owner') {
+    if (userToRemove?.role === 'admin' && isProjectOwner) {
       addNotification({
         type: 'error',
         title: 'Invalid Operation',
@@ -515,16 +407,16 @@ export const ProjectDetailView: React.FC = () => {
     });
   };
 
-  const handleChangeUserRole = (userId: string, newRole: 'owner' | 'editor' | 'viewer') => {
+  const handleChangeUserRole = (userId: string, newRole: SystemRole) => {
     if (!selectedProject) return;
     
     const currentUserId = localStorage.getItem('userId');
     
     // Vérifier les permissions de l'utilisateur actuel
     const currentUserInProject = selectedProject.users?.find(u => u._id === currentUserId);
-    const isProjectOwner = (typeof project?.owner === 'string' && project.owner === currentUserId) || 
-                          (typeof project?.owner === 'object' && project?.owner?._id === currentUserId);
-    const isCurrentUserOwner = isProjectOwner || currentUserInProject?.role === 'owner';
+    const isProjectOwner = (typeof currentProject?.owner === 'string' && currentProject.owner === currentUserId) || 
+                          (typeof currentProject?.owner === 'object' && currentProject?.owner?._id === currentUserId);
+    const isCurrentUserOwner = isProjectOwner || currentUserInProject?.role === 'admin' || currentUserInProject?.role === 'super_admin';
     
     // Seul le owner peut modifier les rôles
     if (!isCurrentUserOwner) {
@@ -537,8 +429,8 @@ export const ProjectDetailView: React.FC = () => {
       return;
     }
     
-    // Empêcher de changer le rôle de l'owner actuel
-    if (userId === currentUserId && newRole !== 'owner') {
+    // Empêcher de changer le rôle de l'admin principal
+    if (userId === currentUserId && newRole !== 'admin' && isProjectOwner) {
       addNotification({
         type: 'error',
         title: 'Invalid Operation',
@@ -546,21 +438,6 @@ export const ProjectDetailView: React.FC = () => {
         category: 'system'
       });
       return;
-    }
-    
-    // Si on essaie de promouvoir quelqu'un en owner
-    if (newRole === 'owner') {
-      // Vérifier qu'il n'y a pas déjà un autre owner
-      const currentOwners = selectedProject.users.filter(u => u.role === 'owner');
-      if (currentOwners.length >= 1 && !currentOwners.some(o => o._id === userId)) {
-        addNotification({
-          type: 'error',
-          title: 'Invalid Operation',
-          message: 'A project can only have one owner. Use transfer ownership instead.',
-          category: 'system'
-        });
-        return;
-      }
     }
     
     // Mettre à jour l'état local
@@ -650,17 +527,21 @@ export const ProjectDetailView: React.FC = () => {
     }
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: SystemRole) => {
     switch (role) {
-      case 'owner': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'editor': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'super_admin': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'admin': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'project_manager': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'security_analyst': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'user': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'viewer': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   };
 
   const handleViewCampaign = (campaign: Campaign) => {
-    if (project) {
-      navigate(`/projects/${project._id}/campaigns/${campaign._id}`);
+    if (currentProject) {
+      navigate(`/projects/${currentProject._id}/campaigns/${campaign._id}`);
     }
   };
 
@@ -686,10 +567,10 @@ export const ProjectDetailView: React.FC = () => {
   };
 
   const handleTransferOwnership = async (newOwnerId: string) => {
-    if (!project) return;
+    if (!currentProject) return;
     
     try {
-      const response = await fetch(`/api/projects/${project._id}/transfer-ownership`, {
+      const response = await fetch(`/api/projects/${currentProject._id}/transfer-ownership`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -726,7 +607,7 @@ export const ProjectDetailView: React.FC = () => {
     );
   }
 
-  if (!project) {
+  if (!currentProject) {
     return (
       <div className="container-padding">
         <div className="text-center py-12">
@@ -769,10 +650,10 @@ export const ProjectDetailView: React.FC = () => {
               <h1 className={`text-3xl font-bold ${
                 theme === 'light' ? 'text-slate-900' : 'text-white'
               }`}>
-                {project.name}
+                {currentProject.name}
                 </h1>
               <p className={theme === 'light' ? 'text-slate-600' : 'text-gray-400'}>
-                {project.description}
+                {currentProject.description}
               </p>
             </div>
           </div>
@@ -780,8 +661,8 @@ export const ProjectDetailView: React.FC = () => {
 
         {/* Project Info */}
         <div className="flex items-center space-x-3">
-          <StatusBadge status={getStatusColor(project.status)}>
-            {project.status || 'active'}
+          <StatusBadge status={getStatusColor(currentProject.status)}>
+            {currentProject.status || 'active'}
           </StatusBadge>
           
           <Button
@@ -821,7 +702,7 @@ export const ProjectDetailView: React.FC = () => {
                 <span className={`text-sm font-medium ${
                   theme === 'light' ? 'text-slate-900' : 'text-white'
                 }`}>
-                  {new Date(project.createdAt).toLocaleDateString()}
+                  {new Date(currentProject.createdAt).toLocaleDateString()}
                 </span>
               </div>
                     </div>
@@ -831,8 +712,8 @@ export const ProjectDetailView: React.FC = () => {
                 Status
               </p>
               <div className="mt-1">
-                <StatusBadge status={getStatusColor(project.status)}>
-                  {project.status || 'active'}
+                <StatusBadge status={getStatusColor(currentProject.status)}>
+                  {currentProject.status || 'active'}
                 </StatusBadge>
                       </div>
                     </div>
@@ -846,7 +727,7 @@ export const ProjectDetailView: React.FC = () => {
                 <span className={`text-sm font-medium ${
                   theme === 'light' ? 'text-slate-900' : 'text-white'
                 }`}>
-                  {project.campaigns?.length || 0}
+                  {currentProject.campaigns?.length || 0}
                 </span>
               </div>
                     </div>
@@ -860,7 +741,7 @@ export const ProjectDetailView: React.FC = () => {
                 <span className={`text-sm font-medium ${
                   theme === 'light' ? 'text-slate-900' : 'text-white'
                 }`}>
-                  {project.campaigns?.reduce((total, campaign) => 
+                  {currentProject.campaigns?.reduce((total, campaign) => 
                     total + (campaign.scenarios?.length || 0), 0) || 0}
                 </span>
               </div>
@@ -868,7 +749,7 @@ export const ProjectDetailView: React.FC = () => {
           </div>
         </div>
         
-        {project.description && (
+        {currentProject.description && (
           <div>
             <h3 className={`text-lg font-medium mb-2 ${
               theme === 'light' ? 'text-slate-900' : 'text-white'
@@ -876,7 +757,7 @@ export const ProjectDetailView: React.FC = () => {
               Description
             </h3>
             <p className={theme === 'light' ? 'text-slate-600' : 'text-gray-400'}>
-              {project.description}
+              {currentProject.description}
             </p>
             </div>
           )}
@@ -888,7 +769,7 @@ export const ProjectDetailView: React.FC = () => {
           <h2 className={`text-xl font-semibold ${
             theme === 'light' ? 'text-slate-900' : 'text-white'
           }`}>
-            Campaigns ({project.campaigns?.length || 0})
+            Campaigns ({currentProject.campaigns?.length || 0})
           </h2>
           <Button
             variant="primary"
@@ -899,7 +780,7 @@ export const ProjectDetailView: React.FC = () => {
           </Button>
         </div>
 
-        {!project.campaigns || project.campaigns.length === 0 ? (
+        {!currentProject.campaigns || currentProject.campaigns.length === 0 ? (
           <div className="text-center py-12">
             <DocumentTextIcon className={`w-16 h-16 mx-auto mb-4 ${
               theme === 'light' ? 'text-slate-400' : 'text-gray-400'
@@ -922,7 +803,7 @@ export const ProjectDetailView: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {project.campaigns.map((campaign) => (
+            {currentProject.campaigns.map((campaign) => (
               <motion.div
                 key={campaign._id}
                 initial={{ opacity: 0, y: 20 }}
@@ -996,7 +877,7 @@ export const ProjectDetailView: React.FC = () => {
               </h3>
               </div>
             <p className={`mb-6 ${theme === 'light' ? 'text-slate-600' : 'text-gray-300'}`}>
-              Are you sure you want to delete "{project.name}"? This action cannot be undone and will delete all associated campaigns and scenarios.
+              Are you sure you want to delete "{currentProject.name}"? This action cannot be undone and will delete all associated campaigns and scenarios.
             </p>
             <div className="flex space-x-3">
               <Button
@@ -1111,11 +992,15 @@ export const ProjectDetailView: React.FC = () => {
                     </div>
                     <select
                       value={newUserRole}
-                      onChange={(e) => setNewUserRole(e.target.value as 'owner' | 'editor')}
+                      onChange={(e) => setNewUserRole(e.target.value as SystemRole)}
                       className="border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white sm:text-sm"
                     >
-                      <option value="editor">Editor</option>
-                      <option value="owner">Owner</option>
+                      <option value="user">User</option>
+                      <option value="viewer">Viewer</option>
+                      <option value="security_analyst">Security Analyst</option>
+                      <option value="project_manager">Project Manager</option>
+                      <option value="admin">Admin</option>
+                      <option value="super_admin">Super Admin</option>
                     </select>
                     <button
                       onClick={handleAddUser}
@@ -1148,16 +1033,19 @@ export const ProjectDetailView: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {user.role !== 'owner' && (
+                        {user.role !== 'super_admin' && user.role !== 'admin' && (
                           <>
                             <select
                               value={user.role}
-                              onChange={(e) => handleChangeUserRole(user._id, e.target.value as 'owner' | 'editor' | 'viewer')}
+                              onChange={(e) => handleChangeUserRole(user._id, e.target.value as SystemRole)}
                               className="px-2 py-1 border border-gray-300 rounded text-sm"
                             >
-                              <option value="owner">Owner</option>
-                              <option value="editor">Editor</option>
+                              <option value="user">User</option>
                               <option value="viewer">Viewer</option>
+                              <option value="security_analyst">Security Analyst</option>
+                              <option value="project_manager">Project Manager</option>
+                              <option value="admin">Admin</option>
+                              <option value="super_admin">Super Admin</option>
                             </select>
                             <button
                               onClick={() => handleRemoveUser(user._id)}
@@ -1167,16 +1055,16 @@ export const ProjectDetailView: React.FC = () => {
                             </button>
                           </>
                         )}
-                        {user.role === 'owner' && user.username === localStorage.getItem('username') && (
+                        {user.role === 'super_admin' && user.username === localStorage.getItem('username') && (
                           <button
                             onClick={() => {
-                              if (window.confirm('Are you sure you want to step down as owner? You will become an editor and cannot undo this action.')) {
-                                // Find another owner to transfer to, or promote someone
-                                const otherOwners = selectedProject.users.filter(u => u.role === 'owner' && u._id !== user._id);
-                                if (otherOwners.length > 0) {
-                                  handleTransferOwnership(otherOwners[0]._id);
+                              if (window.confirm('Are you sure you want to step down as super admin? You will become a user and cannot undo this action.')) {
+                                // Find another super admin to transfer to, or promote someone
+                                const otherSuperAdmins = selectedProject.users.filter(u => u.role === 'super_admin' && u._id !== user._id);
+                                if (otherSuperAdmins.length > 0) {
+                                  handleTransferOwnership(otherSuperAdmins[0]._id);
                                 } else {
-                                  alert('You cannot step down as the only owner. Please promote someone else to owner first.');
+                                  alert('You cannot step down as the only super admin. Please promote someone else to super admin first.');
                                 }
                               }
                             }}
@@ -1194,8 +1082,8 @@ export const ProjectDetailView: React.FC = () => {
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                   <h6 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">Role Permissions:</h6>
                   <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                    <li><strong>Owner:</strong> Full control, can delete project</li>
-                    <li><strong>Editor:</strong> Can create and edit campaigns/scenarios</li>
+                    <li><strong>Super Admin:</strong> Full control, can delete project</li>
+                    <li><strong>Admin:</strong> Can create and edit campaigns/scenarios</li>
                   </ul>
                 </div>
               </div>

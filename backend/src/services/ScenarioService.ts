@@ -6,6 +6,8 @@ import { TerminalManager } from './TerminalManager';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 import { AppError } from '../utils/AppError';
+import { ITarget, IAttack } from '../models/Scenario';
+
 export class ScenarioService {
   private static instance: ScenarioService;
   private attackService: AttackService;
@@ -226,8 +228,19 @@ export class ScenarioService {
         throw new AppError('Cannot modify a running scenario', 400);
       }
 
-      // Reset statuses if attacks are modified
+      // Debug logs for attacks
       if (updates.attacks) {
+        logger.info('🔧 DEBUG: updateScenario received attacks:', {
+          attacksType: typeof updates.attacks,
+          isArray: Array.isArray(updates.attacks),
+          attacksLength: Array.isArray(updates.attacks) ? updates.attacks.length : 'not an array',
+          firstAttack: Array.isArray(updates.attacks) && updates.attacks.length > 0 ? updates.attacks[0] : 'no attacks',
+          attacks: updates.attacks
+        });
+      }
+
+      // Reset statuses if attacks are modified
+      if (updates.attacks && Array.isArray(updates.attacks)) {
         updates.attacks = updates.attacks.map(attack => ({
           ...attack,
           status: AttackStatus.PENDING,
@@ -538,6 +551,18 @@ export class ScenarioService {
     const attack = scenario.attacks[attackIndex];
     const target = scenario.targets[attack.parameters.targetIndex];
 
+    // Debug: log attack object to see its structure
+    logger.info(`[DEBUG] Attack object:`, JSON.stringify(attack, null, 2));
+    logger.info(`[DEBUG] Attack tool: ${attack.tool}, typeof: ${typeof attack.tool}`);
+    logger.info(`[DEBUG] Attack object keys:`, Object.keys(attack));
+    logger.info(`[DEBUG] Attack object type:`, typeof attack);
+    logger.info(`[DEBUG] Attack is instance of:`, attack.constructor?.name);
+    
+    // Debug: Test spread operation specifically
+    const testSpread = { ...attack };
+    logger.info(`[DEBUG] Test spread result:`, JSON.stringify(testSpread, null, 2));
+    logger.info(`[DEBUG] Test spread tool:`, testSpread.tool);
+
     const terminal = this.terminalManager.createTerminal(
       scenario._id.toString(),
       attack._id.toString(),
@@ -565,14 +590,33 @@ export class ScenarioService {
         `Launching attack ${attackIndex + 1}: ${attack.tool}`
       );
 
-      // Check if this tool requires multi-terminal setup (like Shennina)
-      const isMultiTerminalTool = attack.tool === 'shennina';
+      // Check if this tool requires multi-terminal setup (like Shennina and GAN-Fuzzer)
+      const isMultiTerminalTool = attack.tool === 'shennina' || attack.tool === 'gan-fuzzer';
       let result: any;
 
       if (isMultiTerminalTool) {
         // Use multi-terminal execution for tools like Shennina
+        // Create enriched attack object with scenario information
+        // Fix: Explicitly construct object instead of using spread operator which fails with Mongoose documents
+        const enrichedAttack = {
+          _id: attack._id,
+          tool: attack.tool,
+          parameters: attack.parameters,
+          status: attack.status,
+          processId: attack.processId,
+          startTime: attack.startTime,
+          endTime: attack.endTime,
+          logs: attack.logs,
+          results: attack.results,
+          // Add scenario context
+          projectId: scenario.project?.toString(),
+          campaignId: scenario.campaign?.toString(), 
+          scenarioId: scenario._id.toString()
+        };
+        
+        
         result = await this.attackService.executeAttackWithMultiTerminal(
-          attack,
+          enrichedAttack,
           target,
           (output: string, terminalId?: string) => {
             if (terminalId) {
@@ -584,9 +628,12 @@ export class ScenarioService {
                   (terminalId.includes('pre-0') ? 'Exfiltration Server' : 'MSF RPC Server') :
                   'Initialize Exploits Tree';
                 
+                // Extract just the terminal key from the full terminalId for display
+                const terminalKey = terminalId.replace(`${scenario._id.toString()}-`, '');
+                
                 additionalTerminal = this.terminalManager.createTerminal(
                   scenario._id.toString(),
-                  terminalId,
+                  terminalKey,
                   `${attack.tool}-additional`,
                   attackIndex
                 );
@@ -608,9 +655,12 @@ export class ScenarioService {
                   (terminalId.includes('pre-0') ? 'Exfiltration Server' : 'MSF RPC Server') :
                   'Initialize Exploits Tree';
                 
+                // Extract just the terminal key from the full terminalId for display
+                const terminalKey = terminalId.replace(`${scenario._id.toString()}-`, '');
+                
                 additionalTerminal = this.terminalManager.createTerminal(
                   scenario._id.toString(),
-                  terminalId,
+                  terminalKey,
                   `${attack.tool}-additional`,
                   attackIndex
                 );
@@ -640,8 +690,28 @@ export class ScenarioService {
         }
       } else {
         // Use standard single-terminal execution
+        // Create enriched attack object with scenario information - Fix: Explicit construction
+        const enrichedAttack = {
+          _id: attack._id,
+          tool: attack.tool,
+          parameters: attack.parameters,
+          status: attack.status,
+          processId: attack.processId,
+          startTime: attack.startTime,
+          endTime: attack.endTime,
+          logs: attack.logs,
+          results: attack.results,
+          // Add scenario context
+          projectId: scenario.project?.toString(),
+          campaignId: scenario.campaign?.toString(), 
+          scenarioId: scenario._id.toString()
+        };
+        
+        // Debug: log enriched attack object for non-multi-terminal tools
+        logger.info(`[DEBUG] Non-multi-terminal enriched attack tool: ${enrichedAttack.tool}, typeof: ${typeof enrichedAttack.tool}`);
+        
         result = await this.attackService.executeAttack(
-          attack,
+          enrichedAttack,
           target,
           (output: string) => {
             this.terminalManager.appendOutput(terminal.id, output);
@@ -652,20 +722,20 @@ export class ScenarioService {
         );
       }
 
-      // Update attack with process ID and success status atomically
+      // Update attack with process ID and running status atomically
       await Scenario.updateOne(
         { _id: scenario._id, 'attacks._id': attack._id },
         { 
           $set: { 
             'attacks.$.processId': result.tabId,
-            'attacks.$.status': AttackStatus.COMPLETED,
-            'attacks.$.endTime': new Date()
+            'attacks.$.status': AttackStatus.RUNNING,
+            'attacks.$.startTime': new Date()
           }
         }
       );
 
-      this.terminalManager.updateStatus(terminal.id, AttackStatus.COMPLETED);
-      logger.info(`Attack ${attackIndex + 1} completed successfully`);
+      this.terminalManager.updateStatus(terminal.id, AttackStatus.RUNNING);
+      logger.info(`Attack ${attackIndex + 1} started with process ID: ${result.tabId}`);
 
     } catch (error) {
       logger.error(`Attack ${attackIndex + 1} failed:`, error);
@@ -708,27 +778,264 @@ export class ScenarioService {
   }
 
   /**
-   * Finalizes a scenario by updating its final status
+   * Finalizes a scenario execution
    */
   private async finalizeScenario(scenario: IScenario): Promise<void> {
     try {
-      const allCompleted = scenario.attacks.every(
-        attack => attack.status === AttackStatus.COMPLETED
-      );
-      
-      scenario.status = allCompleted ? AttackStatus.COMPLETED : AttackStatus.FAILED;
-      scenario.endTime = new Date();
-      
+      // Calculate execution time
       if (scenario.startTime) {
-        scenario.executionTime = Math.round((scenario.endTime.getTime() - scenario.startTime.getTime()) / 1000);
+        scenario.executionTime = Math.round((Date.now() - scenario.startTime.getTime()) / 1000);
       }
-      
+
+      // Determine final status based on attack results
+      const hasFailedAttacks = scenario.attacks.some(attack => attack.status === AttackStatus.FAILED);
+      const hasCompletedAttacks = scenario.attacks.some(attack => attack.status === AttackStatus.COMPLETED);
+
+      if (hasCompletedAttacks && !hasFailedAttacks) {
+        scenario.status = AttackStatus.COMPLETED;
+      } else if (hasCompletedAttacks && hasFailedAttacks) {
+        scenario.status = AttackStatus.FAILED; // Partial success treated as failed
+      } else {
+        scenario.status = AttackStatus.FAILED;
+      }
+
+      scenario.endTime = new Date();
       await scenario.save();
+
       this.executingScenarios.delete(scenario._id.toString());
-      
-      logger.info(`Scenario ${scenario._id} completed with status: ${scenario.status}`);
+      logger.info(`Scenario ${scenario._id} finalized with status: ${scenario.status}`);
     } catch (error) {
       logger.error(`Error finalizing scenario ${scenario._id}:`, error);
+    }
+  }
+
+  // ===== NOUVELLES MÉTHODES POUR LA GESTION DES TARGETS =====
+
+  /**
+   * Ajoute une target à un scénario
+   */
+  async addTarget(scenarioId: string, targetData: any): Promise<IScenario> {
+    try {
+      const scenario = await Scenario.findById(scenarioId);
+      if (!scenario) {
+        throw new AppError('Scenario not found', 404);
+      }
+
+      if (scenario.status === AttackStatus.RUNNING) {
+        throw new AppError('Cannot modify targets of a running scenario', 400);
+      }
+
+      // Valider les données de la target
+      if (!targetData.host) {
+        throw new AppError('Host is required for target', 400);
+      }
+
+      const newTarget: ITarget = {
+        name: targetData.name || `Target ${scenario.targets.length + 1}`,
+        host: targetData.host
+      };
+
+      scenario.targets.push(newTarget);
+      scenario.updatedAt = new Date();
+      
+      const updatedScenario = await scenario.save();
+      logger.info(`Target added to scenario ${scenarioId}: ${newTarget.host}`);
+      
+      return updatedScenario;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`Error adding target to scenario ${scenarioId}:`, error);
+      throw new AppError('Failed to add target', 500);
+    }
+  }
+
+  /**
+   * Met à jour une target d'un scénario
+   */
+  async updateTarget(scenarioId: string, targetId: string, targetData: any): Promise<IScenario> {
+    try {
+      const scenario = await Scenario.findById(scenarioId);
+      if (!scenario) {
+        throw new AppError('Scenario not found', 404);
+      }
+
+      if (scenario.status === AttackStatus.RUNNING) {
+        throw new AppError('Cannot modify targets of a running scenario', 400);
+      }
+
+      // Trouver l'index de la target par son index dans le tableau
+      const targetIndex = scenario.targets.findIndex((_, index) => index.toString() === targetId);
+      
+      if (targetIndex === -1) {
+        throw new AppError('Target not found', 404);
+      }
+
+      // Mettre à jour la target
+      if (targetData.host) {
+        scenario.targets[targetIndex].host = targetData.host;
+      }
+      if (targetData.name) {
+        scenario.targets[targetIndex].name = targetData.name;
+      }
+
+      await scenario.save();
+      return scenario;
+    } catch (error) {
+      logger.error('Error updating target:', error);
+      throw error instanceof AppError ? error : new AppError('Failed to update target', 500);
+    }
+  }
+
+  /**
+   * Supprime une target d'un scénario
+   */
+  async removeTarget(scenarioId: string, targetId: string): Promise<IScenario> {
+    try {
+      const scenario = await Scenario.findById(scenarioId);
+      if (!scenario) {
+        throw new AppError('Scenario not found', 404);
+      }
+
+      if (scenario.status === AttackStatus.RUNNING) {
+        throw new AppError('Cannot modify targets of a running scenario', 400);
+      }
+
+      // Trouver l'index de la target par son index dans le tableau
+      const targetIndex = scenario.targets.findIndex((_, index) => index.toString() === targetId);
+      
+      if (targetIndex === -1) {
+        throw new AppError('Target not found', 404);
+      }
+
+      // Supprimer la target
+      scenario.targets.splice(targetIndex, 1);
+
+      await scenario.save();
+      return scenario;
+    } catch (error) {
+      logger.error('Error removing target:', error);
+      throw error instanceof AppError ? error : new AppError('Failed to remove target', 500);
+    }
+  }
+
+  // ===== NOUVELLES MÉTHODES POUR LA GESTION DES ATTACKS =====
+
+  /**
+   * Ajoute une attack à un scénario
+   */
+  async addAttack(scenarioId: string, attackData: any): Promise<IScenario> {
+    try {
+      const scenario = await Scenario.findById(scenarioId);
+      if (!scenario) {
+        throw new AppError('Scenario not found', 404);
+      }
+
+      if (scenario.status === AttackStatus.RUNNING) {
+        throw new AppError('Cannot modify attacks of a running scenario', 400);
+      }
+
+      // Valider les données de l'attack
+      if (!attackData.tool) {
+        throw new AppError('Tool is required for attack', 400);
+      }
+
+      const newAttack: Partial<IAttack> = {
+        _id: new mongoose.Types.ObjectId(),
+        tool: attackData.tool,
+        parameters: attackData.parameters || {},
+        status: AttackStatus.PENDING,
+        startTime: undefined,
+        endTime: undefined,
+        logs: [],
+        results: null
+      };
+
+      scenario.attacks.push(newAttack as IAttack);
+      scenario.updatedAt = new Date();
+      
+      const updatedScenario = await scenario.save();
+      logger.info(`Attack added to scenario ${scenarioId}: ${newAttack.tool}`);
+      
+      return updatedScenario;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`Error adding attack to scenario ${scenarioId}:`, error);
+      throw new AppError('Failed to add attack', 500);
+    }
+  }
+
+  /**
+   * Met à jour une attack d'un scénario
+   */
+  async updateAttack(scenarioId: string, attackId: string, attackData: any): Promise<IScenario> {
+    try {
+      const scenario = await Scenario.findById(scenarioId);
+      if (!scenario) {
+        throw new AppError('Scenario not found', 404);
+      }
+
+      if (scenario.status === AttackStatus.RUNNING) {
+        throw new AppError('Cannot modify attacks of a running scenario', 400);
+      }
+
+      const attackIndex = scenario.attacks.findIndex(attack => attack._id?.toString() === attackId);
+      if (attackIndex === -1) {
+        throw new AppError('Attack not found', 404);
+      }
+
+      // Mettre à jour les champs fournis
+      if (attackData.tool !== undefined) scenario.attacks[attackIndex].tool = attackData.tool;
+      if (attackData.parameters !== undefined) scenario.attacks[attackIndex].parameters = attackData.parameters;
+      
+      // Réinitialiser le statut si l'attack est modifiée
+      scenario.attacks[attackIndex].status = AttackStatus.PENDING;
+      scenario.attacks[attackIndex].startTime = undefined;
+      scenario.attacks[attackIndex].endTime = undefined;
+      scenario.attacks[attackIndex].logs = [];
+
+      scenario.updatedAt = new Date();
+      
+      const updatedScenario = await scenario.save();
+      logger.info(`Attack updated in scenario ${scenarioId}: ${attackId}`);
+      
+      return updatedScenario;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`Error updating attack in scenario ${scenarioId}:`, error);
+      throw new AppError('Failed to update attack', 500);
+    }
+  }
+
+  /**
+   * Supprime une attack d'un scénario
+   */
+  async removeAttack(scenarioId: string, attackId: string): Promise<IScenario> {
+    try {
+      const scenario = await Scenario.findById(scenarioId);
+      if (!scenario) {
+        throw new AppError('Scenario not found', 404);
+      }
+
+      if (scenario.status === AttackStatus.RUNNING) {
+        throw new AppError('Cannot modify attacks of a running scenario', 400);
+      }
+
+      const attackIndex = scenario.attacks.findIndex(attack => attack._id?.toString() === attackId);
+      if (attackIndex === -1) {
+        throw new AppError('Attack not found', 404);
+      }
+
+      scenario.attacks.splice(attackIndex, 1);
+      scenario.updatedAt = new Date();
+      
+      const updatedScenario = await scenario.save();
+      logger.info(`Attack removed from scenario ${scenarioId}: ${attackId}`);
+      
+      return updatedScenario;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`Error removing attack from scenario ${scenarioId}:`, error);
+      throw new AppError('Failed to remove attack', 500);
     }
   }
 }

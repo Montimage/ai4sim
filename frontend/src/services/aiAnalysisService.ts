@@ -167,17 +167,44 @@ class AIAnalysisService {
       let analysisText: string;
       let usedModel: string;
 
-      if (settings.provider === 'ollama') {
-        prompt = this.buildEnhancedAnalysisPrompt(execution, wazuhMetrics);
-        const result = await this.analyzeWithOllama(prompt, settings);
-        analysisText = result.text;
-        usedModel = result.model;
-      } else {
-        prompt = this.buildEnhancedAnalysisPrompt(execution, wazuhMetrics);
-        const result = await this.analyzeWithOpenRouter(prompt, settings);
-        analysisText = result.text;
-        usedModel = result.model;
+      prompt = this.buildEnhancedAnalysisPrompt(execution, wazuhMetrics);
+      
+      let result: {text: string, model: string};
+      
+      switch (settings.provider) {
+        case 'ollama':
+          result = await this.analyzeWithOllama(prompt, settings);
+          break;
+        case 'openrouter':
+          result = await this.analyzeWithOpenRouter(prompt, settings);
+          break;
+        case 'openai':
+          result = await this.analyzeWithOpenAI(prompt, settings);
+          break;
+        case 'anthropic':
+          result = await this.analyzeWithAnthropic(prompt, settings);
+          break;
+        case 'google':
+          result = await this.analyzeWithGoogle(prompt, settings);
+          break;
+        case 'mistral':
+          result = await this.analyzeWithMistral(prompt, settings);
+          break;
+        case 'cohere':
+          result = await this.analyzeWithCohere(prompt, settings);
+          break;
+        case 'groq':
+          result = await this.analyzeWithGroq(prompt, settings);
+          break;
+        case 'huggingface':
+          result = await this.analyzeWithHuggingFace(prompt, settings);
+          break;
+        default:
+          throw new Error(`Unsupported AI provider: ${settings.provider}`);
       }
+      
+      analysisText = result.text;
+      usedModel = result.model;
       
       const analysis = this.parseEnhancedAnalysisResponse(analysisText, execution, wazuhMetrics);
       
@@ -202,6 +229,48 @@ class AIAnalysisService {
   }
 
   private async analyzeWithOpenRouter(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    // Liste des modèles de fallback pour OpenRouter
+    const fallbackModels = [
+      settings.openrouter.model, // Modèle principal
+      'meta-llama/llama-3.2-3b-instruct:free', // Fallback 1
+      'microsoft/wizardlm-2-8x22b:free', // Fallback 2  
+      'mistralai/mistral-7b-instruct:free', // Fallback 3
+      'meta-llama/llama-3.1-8b-instruct:free' // Fallback 4
+    ];
+
+    let lastError: Error | null = null;
+
+    // Essayer chaque modèle en séquence
+    for (const model of fallbackModels) {
+      try {
+        console.log(`Trying OpenRouter model: ${model}`);
+        const result = await this.tryOpenRouterModel(prompt, settings, model);
+        if (result) {
+          console.log(`Success with model: ${model}`);
+          return result;
+        }
+      } catch (error) {
+        console.warn(`Failed with model ${model}:`, error);
+        lastError = error instanceof Error ? error : new Error(`Unknown error with model ${model}`);
+        
+        // Si c'est une erreur d'autorisation ou de quota, arrêter les tentatives
+        if (error instanceof Error && (
+          error.message.includes('401') || 
+          error.message.includes('403') || 
+          error.message.includes('quota') ||
+          error.message.includes('Unauthorized')
+        )) {
+          console.log('Authorization/quota error detected, stopping fallback attempts');
+          break;
+        }
+      }
+    }
+
+    // Si aucun modèle n'a fonctionné, lancer la dernière erreur
+    throw lastError || new Error('All OpenRouter models failed');
+  }
+
+  private async tryOpenRouterModel(prompt: string, settings: any, model: string): Promise<{text: string, model: string}> {
     // Create an AbortController for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -219,7 +288,7 @@ class AIAnalysisService {
         },
         signal: controller.signal,
         body: JSON.stringify({
-          model: settings.openrouter.model,
+          model: model,
           messages: [
             {
               role: 'system',
@@ -239,24 +308,49 @@ class AIAnalysisService {
               role: 'user',
               content: `${prompt}
 
-              IMPORTANT: Respond ONLY with a valid JSON object. No explanations, no markdown, just pure JSON.
-              
-              Required JSON structure:
-              {
-                "summary": "Brief overview of the security test execution",
-                "attacksAnalysis": [
-                  {
-                    "attackName": "Name of the attack",
-                    "tool": "Tool used",
-                    "status": "success|failed|partial",
-                    "analysis": "Detailed analysis",
-                    "recommendations": "Specific recommendations"
-                  }
-                ],
-                "overallAssessment": "Overall security assessment",
-                "securityImplications": "Security implications",
-                "nextSteps": ["Step 1", "Step 2", "Step 3"]
-              }`
+IMPORTANT: Base your analysis and recommendations primarily on the actual output and error details of each attack, not just the status field. Carefully interpret the output logs, error messages, and technical details to determine the real outcome and context of each attack. If the output indicates a partial success, unexpected behavior, or technical anomaly, reflect this in your analysis and recommendations.
+
+CRITICAL FOR SHENNINA ANALYSIS: When analyzing Shennina output, pay special attention to:
+- Vulnerabilities found with their success rates (e.g., "Log4Shell - Success: 79% - Risk: Medium")
+- Risk scores and compromise rates
+- The difference between "vulnerabilities found" vs "successful exploits"
+- AI recommendations provided by Shennina
+- If vulnerabilities are found but not successfully exploited, this indicates patched/mitigated vulnerabilities, not a complete failure
+
+Please provide a comprehensive analysis in the following JSON format:
+{
+  "summary": "Concrete executive summary based on actual findings (e.g., 'Shennina identified 2 vulnerabilities with 62/100 risk score, GAN Fuzzer failed due to Docker issues')",
+  "attacksAnalysis": [
+    {
+      "attackName": "Tool name only (e.g., 'Shennina', 'GAN-Based Fuzzer' - NO parentheses, NO duplicates)",
+      "status": "success/failed/partial",
+      "analysis": "Detailed analysis of this specific attack. Enrich your analysis with technical details, context, and actionable insights. Avoid generic statements. Base your analysis on the output and error details above, not just the status field.",
+      "recommendations": "Specific recommendations for this attack. Be concrete and technical, and use the output and error details to guide your advice."
+    }
+  ],
+  "overallAssessment": "Concrete assessment based on actual results (e.g., '2 vulnerabilities found by Shennina, Docker issues prevented GAN Fuzzer execution').",
+  "securityImplications": "Specific security implications based on actual findings (e.g., 'Log4Shell vulnerability poses high risk, Docker misconfiguration needs immediate attention').",
+  "nextSteps": ["List of recommended next steps. Be specific and technical."],
+  "timestamp": "${new Date().toISOString()}"
+}
+
+CRITICAL INSTRUCTIONS:
+1. In the attacksAnalysis array, ALWAYS use ONLY the tool name for attackName (e.g., "Shennina", "GAN-Based Fuzzer", "AI-Based KNX Fuzzer")
+2. NEVER use technical IDs like "5greplay", "aiknxfuzzer", etc.
+3. NEVER use generic names like "Attack 1", "Attack 2", "Full AI Assessment", "Standard GAN Fuzzing"
+4. Copy the exact tool names from the "Tool:" field in the attack details section above
+5. You MUST copy and use the exact component/tool names as provided, without any modification, translation, or reformulation. Any deviation is forbidden.
+6. If "Error Analysis" is provided for an attack, MENTION the specific technical errors (Docker, network, permissions, etc.) in your analysis
+7. For Docker-related failures, specifically mention Docker daemon issues, image access problems, or authentication requirements
+8. NEVER use generic placeholder text like "Executive summary of the security assessment" - ALWAYS provide concrete, specific analysis
+9. Base ALL content on actual data from the execution output - no generic statements allowed
+10. Include specific numbers, scores, vulnerability names, and technical details from the actual results
+
+Example correct format:
+- attackName: "Shennina" (not "Attack 1" or "Full AI Assessment")
+- attackName: "GAN-Based Fuzzer" (not "Attack 2" or "Standard GAN Fuzzing")
+- analysis: "Attack failed due to Docker daemon not being accessible. The tool could not execute because..."
+Enrich your analysis with technical details, context, and actionable insights. Avoid generic statements. Always interpret the output and error details for the real outcome.`
             }
           ],
           temperature: 0.3, // Réduire la température pour plus de consistance
@@ -276,15 +370,30 @@ class AIAnalysisService {
       }
 
       const data = await response.json();
-      const analysisText = data.choices[0]?.message?.content || '';
+      console.log('OpenRouter raw response:', data);
       
-      if (!analysisText) {
-        throw new Error('Empty response from OpenRouter');
+      // Vérifier la structure de la réponse
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        console.error('Invalid OpenRouter response structure:', data);
+        throw new Error(`Invalid OpenRouter response structure. Expected choices array, got: ${JSON.stringify(data)}`);
+      }
+      
+      const choice = data.choices[0];
+      if (!choice || !choice.message) {
+        console.error('Invalid choice structure:', choice);
+        throw new Error(`Invalid choice structure. Expected message object, got: ${JSON.stringify(choice)}`);
+      }
+      
+      const analysisText = choice.message.content || '';
+      
+      if (!analysisText.trim()) {
+        console.error('Empty content from OpenRouter. Full response:', data);
+        throw new Error(`Empty response from OpenRouter. Model: ${model}. Response: ${JSON.stringify(data)}`);
       }
       
       return {
         text: analysisText,
-        model: settings.openrouter.model
+        model: model
       };
     } catch (error: unknown) {
       clearTimeout(timeoutId);
@@ -401,17 +510,19 @@ Begin your JSON response now:`;
 
   // Méthode pour obtenir les informations d'attaque enrichies
   private getEnrichedAttackInfo(attack: any) {
-    const toolDisplayName = this.getToolDisplayName(attack.tool);
-    
-    // Essayer de trouver l'attaque spécifique dans l'outil
+    // Always use canonical tool name (no version, no extra info)
+    const toolDisplayName = this.getToolDisplayName(attack.tool)
+      .replace(/ v[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-zA-Z0-9]+)?/g, '')
+      .replace(/ Version [0-9]+\.[0-9]+(\.[0-9]+)?/g, '')
+      .replace(/\s*AI-Powered Security Framework.*/g, '')
+      .trim();
+
+    // Attack display name logic unchanged
     const tool = TOOLS.find(t => t.id === attack.tool);
     let attackDisplayName = attack.name;
-    
     if (tool && tool.attacks && tool.attacks.length > 0) {
-      // Si on a des paramètres, essayer de matcher l'attaque spécifique
       if (attack.parameters && Object.keys(attack.parameters).length > 0) {
         const matchingAttack = tool.attacks.find(a => {
-          // Logique de matching basée sur les paramètres ou autres critères
           return a.parameters && Object.keys(a.parameters).some(param => 
             attack.parameters.hasOwnProperty(param)
           );
@@ -420,11 +531,10 @@ Begin your JSON response now:`;
           attackDisplayName = matchingAttack.name;
         }
       } else {
-        // Utiliser la première attaque par défaut
         attackDisplayName = tool.attacks[0].name;
       }
     }
-    
+
     return {
       toolDisplayName,
       attackDisplayName,
@@ -434,6 +544,7 @@ Begin your JSON response now:`;
   }
 
   private buildEnhancedAnalysisPrompt(execution: ExecutionRecord, wazuhMetrics?: WazuhSecurityMetrics | null): string {
+    // Restore the previous (Juin 2025) prompt logic
     let prompt = `
 Analyze this security test scenario and provide a detailed report in English.
 
@@ -450,10 +561,8 @@ ${execution.targets.map(target => `- ${target.name} (${target.host})`).join('\n'
 **Attack Details:**
 ${execution.attacks.map((attack, index) => {
   const enrichedInfo = this.getEnrichedAttackInfo(attack);
-  
-  // Analyser les erreurs spécifiques dans l'output
   const errorAnalysis = this.analyzeAttackErrors(attack);
-  
+  const shenninaAnalysis = this.analyzeShenninaOutput(attack);
   return `
 Attack ${index + 1}: ${enrichedInfo.attackDisplayName}
 - Tool: ${enrichedInfo.toolDisplayName}
@@ -461,13 +570,11 @@ Attack ${index + 1}: ${enrichedInfo.attackDisplayName}
 - Parameters: ${JSON.stringify(attack.parameters)}
 - Complete Output: ${attack.output.map(line => `[${line.type}] ${line.content}`).join('; ')}
 ${errorAnalysis ? `- Error Analysis: ${errorAnalysis}` : ''}
+${shenninaAnalysis ? `- Shennina Analysis: ${shenninaAnalysis}` : ''}
 `;
-}).join('\n')}`;
+}).join('\n')}
 
-    // Add Wazuh security monitoring data if available
-    if (wazuhMetrics) {
-      prompt += `
-
+${wazuhMetrics ? `
 **Security Monitoring Data (Wazuh):**
 - Total Security Alerts: ${wazuhMetrics.totalAlerts}
 - Critical Alerts: ${wazuhMetrics.criticalAlerts}
@@ -488,26 +595,24 @@ ${wazuhMetrics.attackPatterns.slice(0, 5).map(pattern =>
 **Network Activity Analysis:**
 ${wazuhMetrics.networkActivity.slice(0, 5).map(activity => 
   `- ${activity.sourceIp} → ${activity.destinationIp} (${activity.protocol}): ${activity.count} connections${activity.suspicious ? ' [SUSPICIOUS]' : ''}`
-).join('\n')}`;
-    }
-
-    prompt += `
+).join('\n')}
+` : ''}
 
 Please provide a comprehensive analysis in the following JSON format:
 {
-  "summary": "Executive summary of the security assessment",
+  "summary": "Concrete executive summary based on actual findings (e.g., 'Shennina identified 2 vulnerabilities with 62/100 risk score, GAN Fuzzer failed due to Docker issues')",
   "attacksAnalysis": [
     {
       "attackName": "Use descriptive attack name, not 'Attack N'",
       "tool": "Use full tool name (e.g., 'GAN-Based Fuzzer' not '5greplay')",
       "status": "success/failed/partial",
-      "analysis": "Detailed analysis of this specific attack",
-      "recommendations": "Specific recommendations for this attack"
+      "analysis": "Detailed analysis of this specific attack. Enrich your analysis with technical details, context, and actionable insights. Avoid generic statements.",
+      "recommendations": "Specific recommendations for this attack. Be concrete and technical."
     }
   ],
-  "overallAssessment": "Overall security assessment and risk evaluation",
-  "securityImplications": "Security implications and potential impact",
-  "nextSteps": ["List of recommended next steps"],
+  "overallAssessment": "Concrete assessment based on actual results (e.g., '2 vulnerabilities found by Shennina, Docker issues prevented GAN Fuzzer execution').",
+  "securityImplications": "Specific security implications based on actual findings (e.g., 'Log4Shell vulnerability poses high risk, Docker misconfiguration needs immediate attention').",
+  "nextSteps": ["List of recommended next steps. Be specific and technical."],
   ${wazuhMetrics ? `"wazuhIntegration": {
     "alertsSummary": "Summary of security alerts and their significance",
     "criticalFindings": ["List of critical security findings from monitoring"],
@@ -518,16 +623,20 @@ Please provide a comprehensive analysis in the following JSON format:
 }
 
 CRITICAL INSTRUCTIONS:
-1. In the attacksAnalysis array, ALWAYS use the descriptive tool names provided in the attack details above (e.g., "GAN-Based Fuzzer", "AI-Based KNX Fuzzer")
+1. In the attacksAnalysis array, ALWAYS use ONLY the tool name for attackName (e.g., "Shennina", "GAN-Based Fuzzer", "AI-Based KNX Fuzzer")
 2. NEVER use technical IDs like "5greplay", "aiknxfuzzer", etc.
-3. Use meaningful attack names, not generic "Attack 1", "Attack 2"
+3. NEVER use generic names like "Attack 1", "Attack 2", "Full AI Assessment", "Standard GAN Fuzzing"
 4. Copy the exact tool names from the "Tool:" field in the attack details section above
-5. If "Error Analysis" is provided for an attack, MENTION the specific technical errors (Docker, network, permissions, etc.) in your analysis
-6. For Docker-related failures, specifically mention Docker daemon issues, image access problems, or authentication requirements
+5. You MUST copy and use the exact component/tool names as provided, without any modification, translation, or reformulation. Any deviation is forbidden.
+6. If "Error Analysis" is provided for an attack, MENTION the specific technical errors (Docker, network, permissions, etc.) in your analysis
+7. For Docker-related failures, specifically mention Docker daemon issues, image access problems, or authentication requirements
+8. NEVER use generic placeholder text like "Executive summary of the security assessment" - ALWAYS provide concrete, specific analysis
+9. Base ALL content on actual data from the execution output - no generic statements allowed
+10. Include specific numbers, scores, vulnerability names, and technical details from the actual results
 
 Example correct format:
-- attackName: "Standard GAN Fuzzing" (not "Attack 1")
-- tool: "GAN-Based Fuzzer" (not "5greplay")
+- attackName: "Shennina" (not "Attack 1" or "Full AI Assessment")
+- attackName: "GAN-Based Fuzzer" (not "Attack 2" or "Standard GAN Fuzzing")
 - analysis: "Attack failed due to Docker daemon not being accessible. The tool could not execute because..."`;
 
     return prompt;
@@ -975,12 +1084,12 @@ Example correct format:
         }
         
         // Corriger le nom de l'outil s'il contient des IDs techniques
-        if (attack.tool === executionAttack.tool || attack.tool.includes('5greplay') || attack.tool.includes('aiknx')) {
+        if (attack.tool && (attack.tool === executionAttack.tool || attack.tool.includes('5greplay') || attack.tool.includes('aiknx'))) {
           correctedToolName = enrichedInfo.toolDisplayName;
         }
       }
       
-      // Normaliser le status
+      // Normaliser le status - logique spéciale pour Shennina
       let normalizedStatus: 'success' | 'failed' | 'partial' = 'partial';
       if (typeof attack.status === 'string') {
         const statusLower = attack.status.toLowerCase();
@@ -990,6 +1099,14 @@ Example correct format:
           normalizedStatus = 'failed';
         } else {
           normalizedStatus = 'partial';
+        }
+      }
+      
+      // Logique spéciale pour Shennina : si des vulnérabilités sont trouvées, c'est un succès partiel
+      if (executionAttack && executionAttack.tool === 'shennina') {
+        const shenninaAnalysis = this.analyzeShenninaOutput(executionAttack);
+        if (shenninaAnalysis && typeof shenninaAnalysis === 'string' && shenninaAnalysis.includes('Found') && shenninaAnalysis.includes('vulnerabilities')) {
+          normalizedStatus = 'success'; // Shennina a trouvé des vulnérabilités = succès
         }
       }
       
@@ -1005,7 +1122,7 @@ Example correct format:
 
   // Vérifier si des améliorations ont été apportées et invalider le cache si nécessaire
   private checkForImprovements(): void {
-    const IMPROVEMENTS_VERSION = '1.4'; // Incrémenter à chaque amélioration majeure
+    const IMPROVEMENTS_VERSION = '1.8'; // Incrémenter à chaque amélioration majeure
     const lastVersion = localStorage.getItem('ai-analysis-improvements-version');
     const lastCheck = localStorage.getItem('ai-analysis-last-check');
     const now = Date.now();
@@ -1074,6 +1191,114 @@ Example correct format:
     if (errorMessages.length > 0) {
       const uniqueErrors = Array.from(new Set(errorMessages));
       return uniqueErrors.join('; ');
+    }
+
+    return null;
+  }
+
+  // Nouvelle méthode pour analyser spécifiquement l'output de Shennina
+  private analyzeShenninaOutput(attack: any): string | null {
+    if (!attack.output || attack.output.length === 0 || attack.tool !== 'shennina') {
+      return null;
+    }
+
+    const shenninaData: {
+      vulnerabilities: Array<{name: string, successRate: number, risk: string}>;
+      riskScore: number;
+      exploitsFound: number;
+      successfulExploits: number;
+      compromiseRate: number;
+      recommendations: string[];
+    } = {
+      vulnerabilities: [],
+      riskScore: 0,
+      exploitsFound: 0,
+      successfulExploits: 0,
+      compromiseRate: 0,
+      recommendations: []
+    };
+
+    // Analyser l'output de Shennina
+    attack.output.forEach((line: any) => {
+      if (line.content) {
+        const content = line.content;
+        
+        // Extraire les vulnérabilités avec leurs taux de succès
+        const vulnMatch = content.match(/⚠️ CAUTION (\w+) - Success: (\d+)% - Risk: (\w+)/);
+        if (vulnMatch) {
+          shenninaData.vulnerabilities.push({
+            name: vulnMatch[1],
+            successRate: parseInt(vulnMatch[2]),
+            risk: vulnMatch[3]
+          });
+        }
+
+        // Extraire le score de risque
+        const riskMatch = content.match(/📊 Risk Score: (\d+)\/100/);
+        if (riskMatch) {
+          shenninaData.riskScore = parseInt(riskMatch[1]);
+        }
+
+        // Extraire le nombre de vulnérabilités trouvées
+        const vulnCountMatch = content.match(/⚠️ Vulnerabilities Found: (\d+)/);
+        if (vulnCountMatch) {
+          shenninaData.exploitsFound = parseInt(vulnCountMatch[1]);
+        }
+
+        // Extraire le nombre d'exploits réussis
+        const successMatch = content.match(/✅ Successful Exploits: (\d+)/);
+        if (successMatch) {
+          shenninaData.successfulExploits = parseInt(successMatch[1]);
+        }
+
+        // Extraire le taux de compromission
+        const compromiseMatch = content.match(/🎉 Compromise Rate: ([\d.]+)%/);
+        if (compromiseMatch) {
+          shenninaData.compromiseRate = parseFloat(compromiseMatch[1]);
+        }
+
+        // Extraire les recommandations
+        const recMatch = content.match(/💡 AI Recommendations:\s*([\s\S]*?)(?=\n\n|$)/);
+        if (recMatch) {
+          const recommendations = recMatch[1]
+            .split('\n')
+            .map((line: string) => line.replace(/^•\s*/, '').trim())
+            .filter((line: string) => line.length > 0);
+          shenninaData.recommendations = recommendations;
+        }
+      }
+    });
+
+    // Construire l'analyse si des données ont été trouvées
+    if (shenninaData.vulnerabilities.length > 0 || shenninaData.riskScore > 0) {
+      let analysis = `Shennina AI Assessment: `;
+      
+      if (shenninaData.riskScore > 0) {
+        analysis += `Risk Score ${shenninaData.riskScore}/100. `;
+      }
+      
+      if (shenninaData.vulnerabilities.length > 0) {
+        analysis += `Found ${shenninaData.vulnerabilities.length} vulnerabilities: `;
+        analysis += shenninaData.vulnerabilities.map(v => 
+          `${v.name} (${v.successRate}% success, ${v.risk} risk)`
+        ).join(', ') + '. ';
+      }
+      
+      if (shenninaData.successfulExploits > 0) {
+        analysis += `Successfully exploited ${shenninaData.successfulExploits} vulnerabilities. `;
+      } else if (shenninaData.exploitsFound > 0) {
+        analysis += `Found ${shenninaData.exploitsFound} vulnerabilities but none were successfully exploited. `;
+      }
+      
+      if (shenninaData.compromiseRate > 0) {
+        analysis += `Compromise rate: ${shenninaData.compromiseRate}%. `;
+      }
+      
+      if (shenninaData.recommendations.length > 0) {
+        analysis += `Key recommendations: ${shenninaData.recommendations.slice(0, 3).join(', ')}.`;
+      }
+      
+      return analysis;
     }
 
     return null;
@@ -1312,6 +1537,359 @@ Example correct format:
     } catch (error) {
       console.error('Error exporting to PDF:', error);
       throw error;
+    }
+  }
+
+  private async analyzeWithOpenAI(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 300000); // 5 minutes timeout
+
+    try {
+      const response = await fetch(`${settings.openai.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.openai.apiKey}`,
+          'Content-Type': 'application/json',
+          ...(settings.openai.organization && { 'OpenAI-Organization': settings.openai.organization })
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: settings.openai.model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a cybersecurity expert. Respond with valid JSON only.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.choices[0]?.message?.content || '';
+      
+      if (!analysisText) {
+        throw new Error('Empty response from OpenAI');
+      }
+      
+      return {
+        text: analysisText,
+        model: settings.openai.model
+      };
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error instanceof Error ? error : new Error('Unknown OpenAI error');
+    }
+  }
+
+  private async analyzeWithAnthropic(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 300000);
+
+    try {
+      const response = await fetch(`${settings.anthropic.baseUrl}/v1/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.anthropic.apiKey}`,
+          'Content-Type': 'application/json',
+          'anthropic-version': settings.anthropic.version
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: settings.anthropic.model,
+          max_tokens: 2000,
+          messages: [
+            {
+              role: 'user',
+              content: `You are a cybersecurity expert. Respond with valid JSON only. ${prompt}`
+            }
+          ]
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.content[0]?.text || '';
+      
+      if (!analysisText) {
+        throw new Error('Empty response from Anthropic');
+      }
+      
+      return {
+        text: analysisText,
+        model: settings.anthropic.model
+      };
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error instanceof Error ? error : new Error('Unknown Anthropic error');
+    }
+  }
+
+  private async analyzeWithGoogle(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 300000);
+
+    try {
+      const response = await fetch(`${settings.google.baseUrl}/models/${settings.google.model}:generateContent?key=${settings.google.apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a cybersecurity expert. Respond with valid JSON only. ${prompt}`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 2000
+          }
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Google API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.candidates[0]?.content?.parts[0]?.text || '';
+      
+      if (!analysisText) {
+        throw new Error('Empty response from Google');
+      }
+      
+      return {
+        text: analysisText,
+        model: settings.google.model
+      };
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error instanceof Error ? error : new Error('Unknown Google error');
+    }
+  }
+
+  private async analyzeWithMistral(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 300000);
+
+    try {
+      const response = await fetch(`${settings.mistral.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.mistral.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: settings.mistral.model,
+          messages: [
+            {
+              role: 'user',
+              content: `You are a cybersecurity expert. Respond with valid JSON only. ${prompt}`
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Mistral API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.choices[0]?.message?.content || '';
+      
+      if (!analysisText) {
+        throw new Error('Empty response from Mistral');
+      }
+      
+      return {
+        text: analysisText,
+        model: settings.mistral.model
+      };
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error instanceof Error ? error : new Error('Unknown Mistral error');
+    }
+  }
+
+  private async analyzeWithCohere(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 300000);
+
+    try {
+      const response = await fetch(`${settings.cohere.baseUrl}/v1/chat`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.cohere.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: settings.cohere.model,
+          message: `You are a cybersecurity expert. Respond with valid JSON only. ${prompt}`,
+          temperature: 0.3,
+          max_tokens: 2000
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Cohere API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.text || '';
+      
+      if (!analysisText) {
+        throw new Error('Empty response from Cohere');
+      }
+      
+      return {
+        text: analysisText,
+        model: settings.cohere.model
+      };
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error instanceof Error ? error : new Error('Unknown Cohere error');
+    }
+  }
+
+  private async analyzeWithGroq(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 300000);
+
+    try {
+      const response = await fetch(`${settings.groq.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.groq.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: settings.groq.model,
+          messages: [
+            {
+              role: 'user',
+              content: `You are a cybersecurity expert. Respond with valid JSON only. ${prompt}`
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.choices[0]?.message?.content || '';
+      
+      if (!analysisText) {
+        throw new Error('Empty response from Groq');
+      }
+      
+      return {
+        text: analysisText,
+        model: settings.groq.model
+      };
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error instanceof Error ? error : new Error('Unknown Groq error');
+    }
+  }
+
+  private async analyzeWithHuggingFace(prompt: string, settings: any): Promise<{text: string, model: string}> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 300000);
+
+    try {
+      const response = await fetch(`${settings.huggingface.baseUrl}/${settings.huggingface.model}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.huggingface.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          inputs: `You are a cybersecurity expert. Respond with valid JSON only. ${prompt}`,
+          parameters: {
+            temperature: 0.3,
+            max_new_tokens: 2000,
+            return_full_text: false
+          }
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HuggingFace API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data[0]?.generated_text || '';
+      
+      if (!analysisText) {
+        throw new Error('Empty response from HuggingFace');
+      }
+      
+      return {
+        text: analysisText,
+        model: settings.huggingface.model
+      };
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error instanceof Error ? error : new Error('Unknown HuggingFace error');
     }
   }
 }

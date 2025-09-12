@@ -21,7 +21,6 @@ export interface TargetInfo {
   id: string;
   name: string;
   host: string;
-  port?: number;
   description?: string;
 }
 
@@ -66,7 +65,6 @@ const TargetInfoSchema = new Schema({
   id: { type: String, required: true },
   name: { type: String, required: true },
   host: { type: String, required: true },
-  port: { type: Number },
   description: { type: String }
 });
 

@@ -46,16 +46,7 @@ export const ProjectCampaigns: React.FC<ProjectCampaignsProps> = ({ project, onR
   };
 
   const handleAddTarget = () => {
-    setTargets([
-      ...targets,
-      {
-        host: '',
-        name: `Target ${targets.length + 1}`,
-        port: 0,
-        protocol: 'tcp',
-        hasAgent: false
-      }
-    ]);
+    setTargets([...targets, { host: '', name: '', hasAgent: false }]);
   };
 
   const handleUpdateTarget = (index: number, field: keyof Target, value: any) => {
@@ -225,21 +216,12 @@ export const ProjectCampaigns: React.FC<ProjectCampaignsProps> = ({ project, onR
                                   required
                                 />
                                 <input
-                                  type="number"
-                                  value={target.port || ''}
-                                  onChange={(e) => handleUpdateTarget(index, 'port', parseInt(e.target.value) || 0)}
-                                  placeholder="Port"
-                                  className="w-16 text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 dark:bg-gray-800 dark:text-white"
+                                  type="text"
+                                  value={target.name || ''}
+                                  onChange={(e) => handleUpdateTarget(index, 'name', e.target.value)}
+                                  placeholder="Name"
+                                  className="w-24 text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 dark:bg-gray-800 dark:text-white"
                                 />
-                                <select
-                                  value={target.protocol}
-                                  onChange={(e) => handleUpdateTarget(index, 'protocol', e.target.value)}
-                                  className="w-16 text-xs border border-gray-300 dark:border-gray-600 rounded-md px-1 py-1 dark:bg-gray-800 dark:text-white"
-                                >
-                                  <option value="tcp">TCP</option>
-                                  <option value="udp">UDP</option>
-                                  <option value="http">HTTP</option>
-                                </select>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveTarget(index)}
@@ -297,7 +279,7 @@ export const ProjectCampaigns: React.FC<ProjectCampaignsProps> = ({ project, onR
                             <ul className="mt-1 space-y-1">
                               {scenario.targets.map((target, tIdx) => (
                                 <li key={tIdx} className="text-xs text-gray-600 dark:text-gray-400">
-                                  {target.host}{target.port ? `:${target.port}` : ''} ({target.protocol})
+                                  {target.name}: {target.host}
                                   {target.hasAgent && ' - Agent enabled'}
                                 </li>
                               ))}

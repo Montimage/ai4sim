@@ -151,6 +151,34 @@ router.post('/:userId/toggle-lock',
   userController.toggleUserLock
 );
 
+/**
+ * @route PUT /api/users/:userId/permissions
+ * @desc Mettre à jour les permissions d'un utilisateur
+ * @access Admin ou permission users:update
+ */
+router.put('/:userId/permissions',
+  requireAnyPermission([
+    { resource: 'users', action: 'update' },
+    { resource: 'users', action: 'admin' }
+  ]),
+  logResourceAccess('user_permissions_update'),
+  userController.updateUserPermissions
+);
+
+/**
+ * @route PUT /api/users/:userId/custom-roles
+ * @desc Mettre à jour les rôles personnalisés d'un utilisateur
+ * @access Admin ou permission users:update
+ */
+router.put('/:userId/custom-roles',
+  requireAnyPermission([
+    { resource: 'users', action: 'update' },
+    { resource: 'users', action: 'admin' }
+  ]),
+  logResourceAccess('user_custom_roles_update'),
+  userController.updateUserCustomRoles
+);
+
 // Routes de gestion des rôles
 
 /**

@@ -267,18 +267,34 @@ export class AttackService {
     onError: (error: string, terminalId?: string) => void
   ): Promise<{ tabId: string; additionalTerminals?: string[] }> {
     try {
+      // Debug: log received attack object at method entry
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - Attack object received:`, JSON.stringify(attack, null, 2));
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - Attack tool: ${attack.tool}, typeof: ${typeof attack.tool}`);
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - Attack _id: ${attack._id}, typeof: ${typeof attack._id}`);
+      
       const attackId = typeof attack._id === 'object' ? attack._id.toString() : attack._id;
+      const scenarioId = attack.scenarioId || 'unknown';
       const attackSessionId = `attack-${attackId}-${Date.now()}`;
       
+      // Debug: log processed values
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - Processed attackId: ${attackId}`);
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - scenarioId: ${scenarioId}`);
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - attackSessionId: ${attackSessionId}`);
+      
       // Check if this tool requires multi-terminal setup
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - About to call getToolMultiTerminalConfig with tool: ${attack.tool}`);
       const toolConfig = this.getToolMultiTerminalConfig(attack.tool);
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - toolConfig result:`, toolConfig ? 'found' : 'not found');
       const additionalTerminals: string[] = [];
       
       if (toolConfig) {
+        logger.info(`Creating ${toolConfig.preCommands.length + toolConfig.initCommands.length} additional terminals for ${attack.tool}`);
+        
         // Start pre-commands in separate terminals
         for (let i = 0; i < toolConfig.preCommands.length; i++) {
           const preCommand = toolConfig.preCommands[i];
-          const preTerminalId = `${attackSessionId}-pre-${i}`;
+          // Create terminal ID in the format expected by TerminalManager: scenarioId-terminalKey
+          const preTerminalId = `${scenarioId}-${attackSessionId}-pre-${i}`;
           additionalTerminals.push(preTerminalId);
           
           onOutput(`Starting ${preCommand.name}: ${preCommand.description}`, preTerminalId);
@@ -293,14 +309,18 @@ export class AttackService {
               (notification) => {
                 if (notification.level === 'error') {
                   onError(notification.message, preTerminalId);
-                } else {
-                  onOutput(notification.message, preTerminalId);
+                } else if (notification.level === 'success') {
+                  // Ne pas renvoyer les messages "Process completed successfully" car ils sont déjà envoyés par ProcessManager
+                  if (!notification.message.includes('Process completed successfully')) {
+                    onOutput(notification.message, preTerminalId);
+                  }
                 }
               },
               {
                 projectId: attack.projectId || 'unknown',
                 campaignId: attack.campaignId,
-                scenarioId: attack.scenarioId || 'unknown',
+                scenarioId: scenarioId,
+                attackId: attackId,
                 targets: [target.host]
               }
             );
@@ -315,7 +335,8 @@ export class AttackService {
         // Execute initialization commands
         for (let i = 0; i < toolConfig.initCommands.length; i++) {
           const initCommand = toolConfig.initCommands[i];
-          const initTerminalId = `${attackSessionId}-init-${i}`;
+          // Create terminal ID in the format expected by TerminalManager: scenarioId-terminalKey
+          const initTerminalId = `${scenarioId}-${attackSessionId}-init-${i}`;
           additionalTerminals.push(initTerminalId);
           
           onOutput(`Executing ${initCommand.name}: ${initCommand.description}`, initTerminalId);
@@ -330,14 +351,18 @@ export class AttackService {
               (notification) => {
                 if (notification.level === 'error') {
                   onError(notification.message, initTerminalId);
-                } else {
-                  onOutput(notification.message, initTerminalId);
+                } else if (notification.level === 'success') {
+                  // Ne pas renvoyer les messages "Process completed successfully" car ils sont déjà envoyés par ProcessManager
+                  if (!notification.message.includes('Process completed successfully')) {
+                    onOutput(notification.message, initTerminalId);
+                  }
                 }
               },
               {
                 projectId: attack.projectId || 'unknown',
                 campaignId: attack.campaignId,
-                scenarioId: attack.scenarioId || 'unknown',
+                scenarioId: scenarioId,
+                attackId: attackId,
                 targets: [target.host]
               }
             );
@@ -351,10 +376,20 @@ export class AttackService {
       }
       
       // Now execute the main attack command
+      // Debug: verify attack.tool is still available before buildAttackCommand call
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - Before buildAttackCommand - attack.tool: ${attack.tool}, typeof: ${typeof attack.tool}`);
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - Before buildAttackCommand - full attack object:`, JSON.stringify(attack, null, 2));
+      
       const command = this.buildAttackCommand(attack.tool, {
         ...attack.parameters,
         host: target.host
       });
+      
+      // Debug: log command generation result
+      logger.info(`[DEBUG] executeAttackWithMultiTerminal - buildAttackCommand result: ${command ? 'success' : 'failed'}`);
+      if (!command) {
+        logger.error(`[DEBUG] executeAttackWithMultiTerminal - buildAttackCommand failed for tool: ${attack.tool}`);
+      }
       
       if (!command) {
         const errorMsg = `Unable to generate command for attack ${attack.tool}`;
@@ -365,7 +400,8 @@ export class AttackService {
       const projectInfo = {
         projectId: attack.projectId || 'unknown',
         campaignId: attack.campaignId,
-        scenarioId: attack.scenarioId || 'unknown',
+        scenarioId: scenarioId,
+        attackId: attackId,
         targets: [target.host]
       };
       
@@ -381,20 +417,20 @@ export class AttackService {
           attack.parameters || {},
         attackSessionId,
         (output: string) => {
-          console.log('[DEBUG-ATTACK] Received output from ProcessManager:', output);
           onOutput(output);
         },
         (error: string) => {
-          console.log('[DEBUG-ATTACK] Received error from ProcessManager:', error);
           onError(error);
         },
         (notification) => {
-          console.log('[DEBUG-ATTACK] Received notification from ProcessManager:', notification);
-          // Route notifications based on their level
+          // Route notifications based on their level, mais éviter les doublons
           if (notification.level === 'error') {
             onError(notification.message);
-          } else {
-            onOutput(notification.message);
+          } else if (notification.level === 'success') {
+            // Ne pas renvoyer les messages "Process completed successfully" car ils sont déjà envoyés par ProcessManager
+            if (!notification.message.includes('Process completed successfully')) {
+              onOutput(notification.message);
+            }
           }
         },
         projectInfo
@@ -424,22 +460,26 @@ export class AttackService {
         preCommands: [
           {
             name: "Exfiltration Server",
-            command: "bash -c 'cd /home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/shennina/exfiltration-server && ./run-server.sh'",
+            command: "bash -c 'cd tools/shennina/exfiltration-server && ./run-server.sh'",
             description: "Starts the exfiltration server for data collection"
           },
           {
             name: "MSF RPC Server", 
-            command: "bash -c 'cd /home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/shennina && python3 scripts/run-msfrpc.py'",
+            command: "bash -c 'cd tools/shennina && python3 scripts/run-msfrpc.py'",
             description: "Starts Metasploit RPC server for exploit execution"
           }
         ],
         initCommands: [
           {
             name: "Initialize Exploits Tree",
-            command: "bash -c 'cd /home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/shennina && python3 shennina_standalone.py --initialize-exploits-tree'",
+            command: "bash -c 'cd tools/shennina && python3 shennina_standalone.py --initialize-exploits-tree'",
             description: "Initialize the exploits database"
           }
         ]
+      },
+      'gan-fuzzer': {
+        preCommands: [],
+        initCommands: []
       }
     };
     
@@ -456,11 +496,20 @@ export class AttackService {
     onError: (error: string) => void
   ): Promise<{ tabId: string }> {
     try {
+      // Debug: log attack object received in executeAttack
+      logger.info(`[DEBUG] executeAttack - Attack object received:`, JSON.stringify(attack, null, 2));
+      logger.info(`[DEBUG] executeAttack - Attack tool: ${attack.tool}, typeof: ${typeof attack.tool}`);
+      logger.info(`[DEBUG] executeAttack - Attack _id: ${attack._id}, typeof: ${typeof attack._id}`);
+      
       // Convert IDs to strings to avoid MongoDB errors
       const attackId = typeof attack._id === 'object' ? attack._id.toString() : attack._id;
       
       // Generate unique ID for this attack execution
       const attackSessionId = `attack-${attackId}-${Date.now()}`;
+      
+      // Debug: verify attack.tool is still available before buildAttackCommand call
+      logger.info(`[DEBUG] executeAttack - Before buildAttackCommand - attack.tool: ${attack.tool}, typeof: ${typeof attack.tool}`);
+      logger.info(`[DEBUG] executeAttack - Before buildAttackCommand - full attack object:`, JSON.stringify(attack, null, 2));
       
       // Build command based on tool and parameters
       const command = this.buildAttackCommand(attack.tool, {
@@ -470,7 +519,6 @@ export class AttackService {
       
       if (!command) {
         const errorMsg = `Unable to generate command for attack ${attack.tool}`;
-        console.log('[DEBUG-ATTACK] Pre-execution error:', errorMsg);
         onError(errorMsg);
         throw new Error(errorMsg);
       }
@@ -480,13 +528,12 @@ export class AttackService {
         projectId: attack.projectId || (attack.parameters && attack.parameters.projectId) || 'unknown',
         campaignId: attack.campaignId || (attack.parameters && attack.parameters.campaignId),
         scenarioId: attack.scenarioId || (attack.parameters && attack.parameters.scenarioId) || 'unknown',
+        attackId: attackId,
         targets: [target.host]
       };
 
       // Start process
       try {
-        console.log('[DEBUG-ATTACK] Starting process with command:', command);
-        
         await this.processManager.startProcess(
           command,
           attack.tool === 'shennina' ? 
@@ -497,36 +544,32 @@ export class AttackService {
               mode: attack.parameters?.mode
             } : 
             attack.parameters || {},
-          attackSessionId,
-          (output: string) => {
-            console.log('[DEBUG-ATTACK] Received output from ProcessManager:', output);
-              onOutput(output);
+          attackSessionId,          (output: string) => {
+            onOutput(output);
           },
           (error: string) => {
-            console.log('[DEBUG-ATTACK] Received error from ProcessManager:', error);
             onError(error);
           },
           (notification) => {
-            console.log('[DEBUG-ATTACK] Received notification from ProcessManager:', notification);
-            // Route notifications based on their level
+            // Route notifications based on their level, mais éviter les doublons
             if (notification.level === 'error') {
               onError(notification.message);
-            } else {
-              onOutput(notification.message);
+            } else if (notification.level === 'success') {
+              // Ne pas renvoyer les messages "Process completed successfully" car ils sont déjà envoyés par ProcessManager
+              if (!notification.message.includes('Process completed successfully')) {
+                onOutput(notification.message);
+              }
             }
           },
           projectInfo
         );
 
         // Wait for process to complete
-        console.log('[DEBUG-ATTACK] Waiting for process completion:', attackSessionId);
         await this.processManager.waitForProcess(attackSessionId);
-        console.log('[DEBUG-ATTACK] Process completed');
         
       } catch (processError) {
         const errorMsg = processError instanceof Error ? processError.message : 'Error in process execution';
         logger.error(`[AttackService] Error during process execution: ${errorMsg}`);
-        console.log('[DEBUG-ATTACK] Process error:', errorMsg);
         onError(errorMsg);
         throw processError;
       }
@@ -535,7 +578,6 @@ export class AttackService {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`[AttackService] Error executing attack ${attack.tool}: ${errorMsg}`);
-      console.log('[DEBUG-ATTACK] Final error from executeAttack:', errorMsg);
       onError(errorMsg);
       throw error;
     }
@@ -602,6 +644,17 @@ export class AttackService {
   }
 
   private buildAttackCommand(tool: string, params: Record<string, any>): string {
+    // Debug: log all parameters at entry
+    logger.info(`[DEBUG] buildAttackCommand - Entry - tool: "${tool}", typeof: ${typeof tool}`);
+    logger.info(`[DEBUG] buildAttackCommand - Entry - params:`, JSON.stringify(params, null, 2));
+    
+    // Additional safety check
+    if (tool === undefined || tool === null || tool === '') {
+      const errorMsg = `buildAttackCommand called with invalid tool: ${tool} (typeof: ${typeof tool})`;
+      logger.error(`[DEBUG] ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+    
     // Dynamic command generation based on tool
     switch (tool) {
       // AI4Cyber Tools
@@ -624,21 +677,29 @@ export class AttackService {
         return cmd;
       }
       
-      case 'ai-knx-fuzzer': {
-        const targetIp = params['target-ip'] || params.target || '192.168.1.1';
-        const model = params['model'];
-        const iterations = params['iterations'];
-        const dockerSocket = process.env.DOCKER_SOCKET || 'unix:///var/run/docker.sock';
-        const dockerImage = params.dockerImage || 'montimage/aiknxfuzzer:latest';
+      case 'knx-smart-fuzzer': {
+        const attackIdText = params['attack-id'] || '1';
+        const attackId = attackIdText.toString().charAt(0); // Extrait le premier caractère (l'ID)
+        const knxServer = params['knx-server'] || params.target || '192.168.1.1';
+        const knxPort = params['knx-port'] || '3671';
+        const dockerImage = params.dockerImage || 'knxsmartfuzzer:latest';
         
-        let cmd = `docker -H ${dockerSocket} run --rm ${dockerImage} ${targetIp}`;
-        if (model) cmd += ` --model=${model}`;
-        if (iterations) cmd += ` --iterations=${iterations}`;
-        return cmd;
+        return `docker run --net=host --cap-add=NET_ADMIN --cap-add=NET_RAW --privileged ${dockerImage} ./main.sh --attack-id ${attackId} --knxserver ${knxServer} --knxport ${knxPort}`;
+      }
+      
+      // Maintien de la compatibilité avec l'ancien nom
+      case 'ai-knx-fuzzer': {
+        const attackIdText = params['attack-id'] || '1';
+        const attackId = attackIdText.toString().charAt(0);
+        const knxServer = params['knx-server'] || params['target-ip'] || params.target || '192.168.1.1';
+        const knxPort = params['knx-port'] || '3671';
+        const dockerImage = params.dockerImage || 'knxsmartfuzzer:latest';
+        
+        return `docker run --net=host --cap-add=NET_ADMIN --cap-add=NET_RAW --privileged ${dockerImage} ./main.sh --attack-id ${attackId} --knxserver ${knxServer} --knxport ${knxPort}`;
       }
       
       case 'maip': {
-        const maipPath = process.env.MAIP_COMMAND || '/opt/montimage/start_maip.sh';
+        const maipPath = process.env.MAIP_COMMAND || '/home/hamdouni-mohamed/start_maip_iframe_wrapper.sh';
         return `${maipPath}`;
       }
       
@@ -647,288 +708,221 @@ export class AttackService {
         const outputId = params.outputId;
         
         if (outputId === 'server') {
-          return '/home/hamdouni-mohamed/Montimage/start_maip.sh';
+          return 'tools/maip/start_maip_iframe.sh';
         } else if (outputId === 'client') {
-          return '/home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/maip/start-client.sh';
+          return 'tools/maip/start-client.sh';
         }
         
         return '';
       }
       
       case 'shennina': {
-        // Utiliser l'IP de la cible du scénario en priorité, sinon la valeur par défaut
-        const target = params.host || params.target || '172.17.0.2';
-        const lhost = params.lhost || '172.17.0.1';
-        const scriptPath = '/home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/shennina/shennina_standalone.py';
+        // Utiliser le vrai chemin Shennina du dossier tools
+        const target = params.host || params.target || '192.168.1.100';
+        const lhost = params.lhost || '192.168.1.1';
         
-        // Déterminer le type d'attaque basé sur les paramètres ou l'ID d'attaque
-        if (params.attackType === 'training' || params.mode === 'training') {
-          return `python3 ${scriptPath} --target ${target} --lhost ${lhost} --mode training`;
-        } else if (params.attackType === 'scan-only' || params.mode === 'scan-only') {
-          return `python3 ${scriptPath} --target ${target} --lhost ${lhost} --mode scan-only`;
-        } else {
-          // Mode par défaut : exploitation
-          return `python3 ${scriptPath} --target ${target} --lhost ${lhost} --mode exploitation`;
+        // Déterminer automatiquement le mode selon l'ID de l'attaque
+        let modeFlag = '--mode scan-only'; // Mode par défaut sécurisé
+        const attackId = params.attackId || '';
+        
+        logger.info(`[AttackService] Shennina attackId: "${attackId}"`);
+        
+        if (attackId.includes('shennina-full-assessment') || attackId.includes('full-assessment')) {
+          modeFlag = '--mode exploitation';
+        } else if (attackId.includes('shennina-training') || attackId.includes('training')) {
+          modeFlag = '--mode training';
+        } else if (attackId.includes('scan-only') || attackId.includes('service-scan')) {
+          modeFlag = '--mode scan-only';
+        } else if (params.mode) {
+          // Fallback: utiliser le paramètre mode s'il est fourni
+          if (params.mode === 'training' || params.mode.includes('training')) {
+            modeFlag = '--mode training';
+          } else if (params.mode === 'exploitation' || params.mode.includes('exploitation')) {
+            modeFlag = '--mode exploitation';
+          }
         }
+        
+        logger.info(`[AttackService] Shennina mode final: "${modeFlag}"`);
+        const command = `cd tools/shennina && python3 shennina_standalone.py --target ${target} --lhost ${lhost} ${modeFlag}`;
+        return command;
       }
       
       case 'caldera': {
-        const calderaCmd = process.env.CALDERA_COMMAND || '/home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/caldera/start_caldera.sh';
+        const calderaCmd = process.env.CALDERA_COMMAND || 'tools/caldera/start_caldera.sh';
         return calderaCmd;
       }
       
-      // Kali Linux Tools (Simplified)
-      case 'nmap': {
-        const target = params.target || params.host || '127.0.0.1';
-        const scanType = params['scan-type'] || 'syn';
-        const ports = params.ports || '1-1000';
-        const timing = params.timing || 'T3';
-        
-        let cmd = 'docker run --rm kalilinux/kali-rolling nmap';
-        
-        // Scan type
-        switch (scanType) {
-          case 'syn': cmd += ' -sS'; break;
-          case 'tcp': cmd += ' -sT'; break;
-          case 'udp': cmd += ' -sU'; break;
-          case 'ping': cmd += ' -sn'; break;
-          default: cmd += ' -sS';
-        }
-        
-        // Ports
-        if (ports && scanType !== 'ping') cmd += ` -p ${ports}`;
-        
-        // Timing
-        cmd += ` -${timing}`;
-        
-        // Additional options
-        if (params.verbose) cmd += ' -v';
-        if (params['os-detection']) cmd += ' -O';
-        if (params['service-detection']) cmd += ' -sV';
-        
-        // Force output and add target
-        cmd += ` --open ${target}`;
-        
-        console.log('[DEBUG-NMAP] Generated nmap command:', cmd);
-        return cmd;
-      }
-      
-      case 'masscan': {
-        const target = params.target || params.host || '127.0.0.1';
-        const ports = params.ports || '80,443';
-        const rate = params.rate || '1000';
-        return `docker run --rm kalilinux/kali-rolling masscan ${target} -p${ports} --rate=${rate}`;
-      }
-      
-      case 'sqlmap': {
-        const url = params.url || 'http://example.com';
-        const level = params.level || '1';
-        const risk = params.risk || '1';
-        
-        let cmd = `docker run --rm paoloo/sqlmap -u "${url}" --level=${level} --risk=${risk}`;
-        if (params.dbs) cmd += ' --dbs';
-        if (params.tables) cmd += ' --tables';
-        if (params.dump) cmd += ' --dump';
-        if (params.batch) cmd += ' --batch';
-        return cmd;
-      }
-      
-      case 'nikto': {
-        const host = params.host || params.target || 'http://example.com';
-        const port = params.port || '80';
-        
-        let cmd = `docker run --rm frapsoft/nikto -h ${host}`;
-        if (port !== '80') cmd += ` -p ${port}`;
-        if (params.ssl) cmd += ' -ssl';
-        if (params.evasion) cmd += ` -evasion ${params.evasion}`;
-        return cmd;
-      }
-      
-      case 'dirb': {
-        const url = params.url || 'http://example.com';
-        const wordlist = params.wordlist || '/usr/share/dirb/wordlists/common.txt';
-        
-        let cmd = `docker run --rm kalilinux/kali-rolling dirb ${url}`;
-        if (params.wordlist) cmd += ` ${wordlist}`;
-        if (params.extensions) cmd += ` -X ${params.extensions}`;
-        return cmd;
-      }
-      
-      case 'gobuster': {
-        const url = params.url || 'http://example.com';
-        const wordlist = params.wordlist || '/usr/share/wordlists/dirb/common.txt';
-        const threads = params.threads || '10';
-        
-        let cmd = `docker run --rm kalilinux/kali-rolling gobuster dir -u ${url} -w ${wordlist} -t ${threads}`;
-        if (params.extensions) cmd += ` -x ${params.extensions}`;
-        return cmd;
-      }
-      
-      case 'hydra': {
-        const target = params.target || params.host || '127.0.0.1';
-        const service = params.service || 'ssh';
-        const username = params.username || 'admin';
-        const wordlist = params.wordlist || '/usr/share/wordlists/rockyou.txt';
-        
-        let cmd = `docker run --rm kalilinux/kali-rolling hydra -l ${username} -P ${wordlist}`;
-        if (params.threads) cmd += ` -t ${params.threads}`;
-        cmd += ` ${target} ${service}`;
-        return cmd;
-      }
-      
-      case 'john': {
-        const hashfile = params.hashfile || 'hashes.txt';
-        const wordlist = params.wordlist || '/usr/share/wordlists/rockyou.txt';
-        const format = params.format;
-        
-        let cmd = `docker run --rm kalilinux/kali-rolling john`;
-        if (wordlist) cmd += ` --wordlist=${wordlist}`;
-        if (format) cmd += ` --format=${format}`;
-        cmd += ` ${hashfile}`;
-        return cmd;
-      }
-      
-      case 'aircrack-ng': {
-        const mode = params.mode || 'monitor';
-        const interface_name = params['interface'] || 'wlan0';
-        
-        if (mode === 'monitor') {
-          return `docker run --rm --privileged --net=host kalilinux/kali-rolling airmon-ng start ${interface_name}`;
-        } else if (mode === 'scan') {
-          return `docker run --rm --privileged --net=host kalilinux/kali-rolling airodump-ng ${interface_name}`;
-        } else if (mode === 'crack') {
-          const capfile = params.capfile || 'capture.cap';
-          const wordlist = params.wordlist || '/usr/share/wordlists/rockyou.txt';
-          return `docker run --rm --privileged kalilinux/kali-rolling aircrack-ng -w ${wordlist} ${capfile}`;
-        }
-        return `docker run --rm --privileged --net=host kalilinux/kali-rolling aircrack-ng --help`;
-      }
-      
-      case 'metasploit': {
-        const module = params.module || 'exploit/multi/handler';
-        const payload = params.payload || 'windows/meterpreter/reverse_tcp';
-        const lhost = params.lhost || '127.0.0.1';
-        const lport = params.lport || '4444';
-        
-        return `docker run --rm -it metasploitframework/metasploit-framework msfconsole -x "use ${module}; set PAYLOAD ${payload}; set LHOST ${lhost}; set LPORT ${lport}; exploit"`;
-      }
-      
-      case 'wireshark': {
-        const interface_name = params['interface'] || 'eth0';
-        const capture_file = params.capture_file;
-        
-        if (capture_file) {
-          return `docker run --rm -v /tmp:/tmp kalilinux/kali-rolling tshark -r ${capture_file}`;
+      // Network Tools (Simplified)
+      case 'nmap':
+        if (params.scanType === 'syn') {
+          let cmd = 'nmap';
+          if (params.ports) cmd += ` -p ${params.ports}`;
+          if (params.timing) cmd += ` -${params.timing}`;
+          if (params.version) cmd += ' -sV';
+          if (params.scripts) cmd += ' --script=default';
+          cmd += ` ${params.target}`;
+          return cmd;
         } else {
-          return `docker run --rm --privileged --net=host kalilinux/kali-rolling tshark -i ${interface_name}`;
+          return `nmap -sT -O ${params.target}`;
         }
+
+      case 'masscan':
+        const ports = params.ports || '80,443,22';
+        const rate = params.rate || '1000';
+        return `masscan ${params.target} -p${ports} --rate=${rate} --banners`;
+
+      case 'netcat':
+        return `nc -zvn ${params.target} ${params.port || 80}`;
+
+      case 'telnet':
+        return `telnet ${params.target} ${params.port || 23}`;
+
+      // Web Tools
+      case 'dirb': {
+        const url = params.target.startsWith('http') ? params.target : `http://${params.target}`;
+        let dirbCmd = `dirb ${url}`;
+        if (params.wordlist) dirbCmd += ` ${params.wordlist}`;
+        if (params.extensions) dirbCmd += ` -X ${params.extensions}`;
+        return dirbCmd;
       }
-      
-      // Legacy support for old tools
-      case 'zmap': {
-        const port = params.port || '80';
-        const target = params.target || '192.168.1.0/24';
-        return `docker run --rm --privileged kalilinux/kali-rolling zmap -p ${port} ${target}`;
+
+      case 'gobuster': {
+        const gobusterUrl = params.target.startsWith('http') ? params.target : `http://${params.target}`;
+        const wordlist = params.wordlist || '/usr/share/wordlists/dirb/common.txt';
+        const threads = params.threads || 10;
+        let gobusterCmd = `gobuster dir -u ${gobusterUrl} -w ${wordlist} -t ${threads}`;
+        if (params.extensions) gobusterCmd += ` -x ${params.extensions}`;
+        return gobusterCmd;
       }
-      
-      case 'wpscan': {
-        const url = params.url || 'http://example.com';
-        
-        let cmd = `docker run --rm wpscanteam/wpscan --url ${url}`;
-        if (params.enumerate) cmd += ` --enumerate ${params.enumerate}`;
-        if (params.plugins) cmd += ' --plugins-detection aggressive';
-        if (params.themes) cmd += ' --themes-detection aggressive';
-        return cmd;
+
+      case 'hydra': {
+        const username = params.username || 'admin';
+        const wordlist_hydra = params.wordlist || '/usr/share/wordlists/rockyou.txt';
+        let hydraCmd = `hydra -l ${username} -P ${wordlist_hydra}`;
+        if (params.service) hydraCmd += ` -s ${params.port || 22} ${params.target} ${params.service}`;
+        return hydraCmd;
       }
-      
-      case 'reaver': {
-        const interface_name = params['interface'] || 'wlan0mon';
-        const bssid = params.bssid || '00:00:00:00:00:00';
-        
-        let cmd = `docker run --rm --privileged --net=host kalilinux/kali-rolling reaver -i ${interface_name} -b ${bssid}`;
-        if (params.delay) cmd += ` -d ${params.delay}`;
-        if (params.verbose) cmd += ' -vv';
-        return cmd;
+
+      case 'john': {
+        let johnCmd = `john`;
+        if (params.wordlist) johnCmd += ` --wordlist=${params.wordlist}`;
+        if (params.format) johnCmd += ` --format=${params.format}`;
+        if (params.hashfile) johnCmd += ` ${params.hashfile}`;
+        return johnCmd;
       }
-      
+
+      // Wireless Tools  
+      case 'airmon':
+        const interface_name = params.interface || 'wlan0';
+        return `airmon-ng start ${interface_name}`;
+      case 'airodump':
+        const monitor_interface = params.interface || 'wlan0mon';
+        return `airodump-ng ${monitor_interface}`;
+      case 'aircrack':
+        if (params.wordlist && params.capfile) {
+          const wordlist_air = params.wordlist;
+          const capfile = params.capfile;
+          return `aircrack-ng -w ${wordlist_air} ${capfile}`;
+        }
+        return `aircrack-ng --help`;
+
+      // Packet Analysis
+      case 'wireshark':
+        return 'wireshark';
+      case 'tshark':
+        if (params.capture_file) {
+          const capture_file = params.capture_file;
+          return `tshark -r ${capture_file}`;
+        } else if (params.interface) {
+          const interface_name = params.interface;
+          return `tshark -i ${interface_name}`;
+        }
+        return 'tshark --help';
+
+      case 'zmap':
+        const port = params.port || 80;
+        return `zmap -p ${port} ${params.target}`;
+
+      // Exploitation Tools
+      case 'metasploit':
+        return 'msfconsole';
+      case 'sqlmap':
+        return `sqlmap -u "http://${params.target}" --batch`;
+      case 'reaver':
+        if (params.interface && params.bssid) {
+          const interface_name = params.interface;
+          const bssid = params.bssid;
+          let cmd = `reaver -i ${interface_name} -b ${bssid}`;
+          if (params.delay) cmd += ` -d ${params.delay}`;
+          return cmd;
+        }
+        return 'reaver --help';
+
       case 'searchsploit': {
-        const search_term = params.search_term || 'apache';
-        
-        let cmd = `docker run --rm kalilinux/kali-rolling searchsploit "${search_term}"`;
-        if (params.exact) cmd += ' --exact';
-        if (params.json) cmd += ' --json';
-        return cmd;
+        const search_term = params.search || 'linux kernel';
+        let searchCmd = `searchsploit "${search_term}"`;
+        if (params.exclude) searchCmd += ` --exclude="${params.exclude}"`;
+        return searchCmd;
       }
-      
-      case 'hashcat': {
+
+      // Password Tools
+      case 'hashcat':
+        const hash_type = params.hash_type || 0;
+        const attack_mode = params.attack_mode || 0;
         const hashfile = params.hashfile || 'hashes.txt';
-        const wordlist = params.wordlist || '/usr/share/wordlists/rockyou.txt';
-        const attack_mode = params.attack_mode || '0';
-        const hash_type = params.hash_type || '0';
-        
-        return `docker run --rm --gpus all kalilinux/kali-rolling hashcat -m ${hash_type} -a ${attack_mode} ${hashfile} ${wordlist}`;
-      }
-      
-      case 'setoolkit': {
-        return `docker run --rm -it kalilinux/kali-rolling setoolkit`;
-      }
-      
-      case 'gophish': {
-        const admin_port = params.admin_port || '3333';
-        const phish_port = params.phish_port || '8080';
-        
-        return `docker run --rm -p ${admin_port}:3333 -p ${phish_port}:80 gophish/gophish`;
-      }
-      
-      case 'volatility': {
-        const dumpfile = params.dumpfile || 'memory.dump';
+        const wordlist_hash = params.wordlist || '/usr/share/wordlists/rockyou.txt';
+        return `hashcat -m ${hash_type} -a ${attack_mode} ${hashfile} ${wordlist_hash}`;
+
+      // Social Engineering
+      case 'setoolkit':
+        return `setoolkit`;
+
+      // Forensics Tools
+      case 'autopsy':
+        return 'autopsy';
+      case 'sleuthkit':
+        return 'tsk_loaddb';
+      case 'volatility':
+        const dumpfile = params.dumpfile || 'memory.dmp';
         const profile = params.profile || 'Win7SP1x64';
         const plugin = params.plugin || 'pslist';
-        
-        return `docker run --rm kalilinux/kali-rolling volatility -f ${dumpfile} --profile=${profile} ${plugin}`;
-      }
-      
-      case 'autopsy': {
-        const case_dir = params.case_dir || '/cases';
-        
-        return `docker run --rm -p 9999:9999 -v ${case_dir}:/cases kalilinux/kali-rolling autopsy`;
-      }
-      
-      case 'ettercap': {
-        const interface_name = params['interface'] || 'eth0';
-        const target1 = params.target1;
-        const target2 = params.target2;
-        
-        let cmd = `docker run --rm --privileged --net=host kalilinux/kali-rolling ettercap -T -i ${interface_name}`;
-        if (target1 && target2) {
-          cmd += ` -M arp:remote /${target1}// /${target2}//`;
+        return `volatility -f ${dumpfile} --profile=${profile} ${plugin}`;
+
+      case 'autopsy_server':
+        return `autopsy`;
+
+      case 'empire':
+        return `empire`;
+
+      // Sniffing Tools
+      case 'ettercap':
+        if (params.interface) {
+          const interface_name = params.interface;
+          let cmd = `ettercap -T -i ${interface_name}`;
+          if (params.targets) cmd += ` ${params.targets}`;
+          return cmd;
         }
-        return cmd;
-      }
-      
-      case 'tcpdump': {
-        const interface_name = params['interface'] || 'eth0';
-        const filter = params.filter || '';
-        const count = params.count || '100';
-        
-        let cmd = `docker run --rm --privileged --net=host kalilinux/kali-rolling tcpdump -i ${interface_name} -c ${count}`;
-        if (filter) cmd += ` ${filter}`;
-        return cmd;
-      }
-      
-      case 'radare2': {
-        const binary = params.binary || 'binary';
-        const analysis = params.analysis || 'aa';
-        
-        return `docker run --rm -it -v /tmp:/tmp kalilinux/kali-rolling r2 -A -c "${analysis}" ${binary}`;
-      }
-      
-      case 'empire': {
-        const listener_port = params.listener_port || '8080';
-        
-        return `docker run --rm -it -p ${listener_port}:8080 kalilinux/kali-rolling empire`;
-      }
-      
+        return 'ettercap --help';
+
+      case 'dsniff':
+        return 'dsniff';
+      case 'tcpdump':
+        if (params.interface) {
+          const interface_name = params.interface;
+          const count = params.count || 100;
+          let cmd = `tcpdump -i ${interface_name} -c ${count}`;
+          if (params.filter) cmd += ` '${params.filter}'`;
+          return cmd;
+        }
+        return 'tcpdump --help';
+
+      // Reverse Engineering
+      case 'radare2':
+        const binary = params.binary || '/bin/ls';
+        const analysis = params.analysis || 'aaa; pdf @main';
+        return `r2 -A -c "${analysis}" ${binary}`;
+
+      case 'gdb':
       default:
         throw new Error(`No command generation logic for tool: ${tool}`);
     }

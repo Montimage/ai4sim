@@ -14,6 +14,7 @@ import { useAuthStore } from './store/authStore';
 import { LoadingSpinner } from './components/shared/LoadingSpinner';
 import { ScenarioConfiguration } from './components/views/ScenarioConfiguration';
 import ScenarioManager from './components/views/ScenarioManager';
+import AgentView from './components/views/AgentView';
 
 function App() {
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
@@ -80,6 +81,7 @@ function App() {
       >
         <Route path="dashboard" element={<DashboardView />} />
         <Route path="attacks" element={<AttackPanel />} />
+        <Route path="agent" element={<AgentView />} />
         <Route path="projects" element={<CreateProjectView />} />
         <Route path="projects/:projectId" element={<ProjectDetailView />} />
         <Route path="projects/:projectId/campaigns/:campaignId" element={<CampaignDetailView />} />

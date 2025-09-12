@@ -7,7 +7,7 @@ import { api } from '../services/api';
 interface User {
   _id: string;
   username: string;
-  role: 'admin' | 'user';
+  role: 'user' | 'admin' | 'super_admin';
 }
 
 interface AuthState {

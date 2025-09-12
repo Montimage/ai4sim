@@ -1,7 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useAttackStore } from '../../../store/attackStore';
 import { useThemeStore } from '../../../store/themeStore';
+import { useTabOutputPersistence } from '../../../hooks/useTabOutputPersistence';
 import { ClipboardIcon, TrashIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+
+interface OutputPanelProps {
+  tabId: string;
+}
 
 // Function to detect message type from content
 const detectMessageType = (message: string): 'error' | 'warning' | 'success' | 'info' => {
@@ -47,36 +52,65 @@ const detectMessageType = (message: string): 'error' | 'warning' | 'success' | '
 };
 
 // Function to format timestamp
-const formatTimestamp = (index: number): string => {
-  const now = new Date();
-  // Simulate timestamps based on message index (for demo purposes)
-  const timestamp = new Date(now.getTime() - (1000 * (100 - index)));
-  return timestamp.toLocaleTimeString();
+const formatTimestamp = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleTimeString();
 };
 
-export const OutputPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
-  const output = useAttackStore(state => state.tabStates[tabId]?.output || []);
+export const OutputPanel: React.FC<OutputPanelProps> = ({ tabId }) => {
+  const tabState = useAttackStore(state => state.tabStates[tabId]);
   const clearOutput = useAttackStore(state => state.clearOutput);
+  const clearOutputCache = useAttackStore(state => state.clearOutputCache);
   const theme = useThemeStore(state => state.theme);
+  
   const outputRef = useRef<HTMLDivElement>(null);
+  const [autoScroll] = useState(true);
 
-  // Auto-scroll au bas de la console quand de nouveaux logs arrivent
+  // Utiliser le hook de persistance pour gérer automatiquement la restauration des outputs
+  useTabOutputPersistence(tabId);
+
+  // Utiliser le output principal qui est automatiquement synchronisé avec persistentOutput
+  const outputs = tabState?.output || [];
+
+  // Debug log pour comprendre l'état des outputs
   useEffect(() => {
-    if (outputRef.current) {
+    const persistentOutput = tabState?.persistentOutput || [];
+    const regularOutput = tabState?.output || [];
+    const cacheOutput = tabState?.outputCache || [];
+    
+    console.log(`[OutputPanel] Tab ${tabId} outputs state:`, {
+      persistentLength: persistentOutput.length,
+      regularLength: regularOutput.length,
+      cacheLength: cacheOutput.length,
+      totalLength: outputs.length,
+      tabState: tabState ? 'exists' : 'missing'
+    });
+  }, [tabId, tabState]);
+
+  // Auto-scroll to bottom when new output is added
+  useEffect(() => {
+    if (autoScroll && outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
-  }, [output]);
+  }, [outputs, autoScroll]);
+
+  // Forcer la mise à jour quand le tabId change
+  useEffect(() => {
+    if (outputRef.current && autoScroll) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [tabId, autoScroll]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(output.join('\n'));
+    navigator.clipboard.writeText(outputs.join('\n'));
   };
 
   const handleClear = () => {
     clearOutput(tabId);
+    clearOutputCache(tabId);
   };
 
   const handleExport = () => {
-    const blob = new Blob([output.join('\n')], { type: 'text/plain' });
+    const blob = new Blob([outputs.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -121,15 +155,16 @@ export const OutputPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'
         }`}
       >
-        {output.length === 0 ? (
+        {outputs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-gray-400">
             No output yet
           </div>
         ) : (
           <div className="space-y-1">
-            {output.map((line, index) => {
+            {outputs.map((line, index) => {
               const messageType = detectMessageType(line);
-              const timestamp = formatTimestamp(index);
+              const timestamps = tabState?.outputTimestamps || [];
+              const timestamp = timestamps[index] ? formatTimestamp(timestamps[index]) : formatTimestamp(Date.now());
               
               return (
                 <div 

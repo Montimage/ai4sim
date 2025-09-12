@@ -622,20 +622,22 @@ if (!project.campaigns) {
       }
       
       // Vérifier les permissions de l'utilisateur actuel
-      const isOwner = project.owner.toString() === req.user._id;
+      const projectOwnerString = project.owner.toString();
+      const userIdString = req.user._id.toString(); // FORCE LA CONVERSION EN STRING
+      const isOwner = projectOwnerString === userIdString;
+      
       const userInSharedWith = project.sharedWith?.find((shared: any) => 
-        shared.userId.toString() === req.user._id
+        shared.userId.toString() === userIdString
       );
       const isEditor = userInSharedWith?.role === 'editor';
       const isViewer = userInSharedWith?.role === 'viewer';
       
       logger.info('🔐 User permissions check:', {
-        userId: req.user._id,
+        userId: userIdString,
         username: req.user.username,
         isOwner,
         isEditor,
         isViewer,
-        projectOwner: project.owner.toString(),
         userRole: userInSharedWith?.role || 'none'
       });
       

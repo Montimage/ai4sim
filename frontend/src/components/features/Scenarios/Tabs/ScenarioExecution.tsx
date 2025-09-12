@@ -50,6 +50,9 @@ const ScenarioExecution: React.FC<ScenarioExecutionProps> = React.memo(({ scenar
     );
   }
 
+  // Stable scenario ID reference to prevent hook re-initialization
+  const scenarioId = useMemo(() => scenario._id!, [scenario._id]);
+
   const { 
     output, 
     appendOutput, 
@@ -60,7 +63,7 @@ const ScenarioExecution: React.FC<ScenarioExecutionProps> = React.memo(({ scenar
     currentExecutionId,
     checkExecutionCompletion,
     stopAllProcesses
-  } = useScenarioTerminal(scenario._id);
+  } = useScenarioTerminal(scenarioId);
   
   const { isConnected, sendMessage: wsMessage, addListener } = useWebSocket();
   const sendMessage = wsMessage;
@@ -742,30 +745,44 @@ const ScenarioExecution: React.FC<ScenarioExecutionProps> = React.memo(({ scenar
 }, (prevProps, nextProps) => {
   // Performance optimization: update the component only if necessary
   
-  // If the scenario ID changes, it's definitely a new scenario
-  if (prevProps.scenario._id !== nextProps.scenario._id) return false;
+  // If the scenario ID changes, it's definitely a new scenario - must re-render
+  if (prevProps.scenario._id !== nextProps.scenario._id) {
+    console.log(`🔄 [ScenarioExecution] Scenario ID changed: ${prevProps.scenario._id} -> ${nextProps.scenario._id}`);
+    return false;
+  }
   
   // If the status changes, it needs to be updated
-  if (prevProps.scenario.status !== nextProps.scenario.status) return false;
+  if (prevProps.scenario.status !== nextProps.scenario.status) {
+    console.log(`🔄 [ScenarioExecution] Status changed: ${prevProps.scenario.status} -> ${nextProps.scenario.status}`);
+    return false;
+  }
   
   // If the attacks arrays have different lengths, update
-  if ((prevProps.scenario.attacks?.length || 0) !== (nextProps.scenario.attacks?.length || 0)) return false;
+  const prevAttacksLength = prevProps.scenario.attacks?.length || 0;
+  const nextAttacksLength = nextProps.scenario.attacks?.length || 0;
+  if (prevAttacksLength !== nextAttacksLength) {
+    console.log(`🔄 [ScenarioExecution] Attacks length changed: ${prevAttacksLength} -> ${nextAttacksLength}`);
+    return false;
+  }
   
   // If the attacks are identical in number but different in content, update
   if (prevProps.scenario.attacks && nextProps.scenario.attacks) {
     const prevAttacks = prevProps.scenario.attacks;
     const nextAttacks = nextProps.scenario.attacks;
     
-    // Check each attack
+    // Check each attack for significant changes
     for (let i = 0; i < prevAttacks.length; i++) {
       if (prevAttacks[i].tool !== nextAttacks[i].tool || 
-          prevAttacks[i].processId !== nextAttacks[i].processId) {
+          prevAttacks[i].processId !== nextAttacks[i].processId ||
+          prevAttacks[i].status !== nextAttacks[i].status) {
+        console.log(`🔄 [ScenarioExecution] Attack ${i} changed`);
         return false;
       }
     }
   }
   
-  // Otherwise, do not update
+  // Otherwise, prevent re-render
+  console.log(`⏸️ [ScenarioExecution] Preventing unnecessary re-render for scenario ${nextProps.scenario._id}`);
   return true;
 });
 

@@ -1,17 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  FolderIcon, 
-  DocumentTextIcon, 
-  BoltIcon,
-  ChartBarIcon,
-  UserIcon,
-  ArrowRightOnRectangleIcon,
-  Cog6ToothIcon
-} from '@heroicons/react/24/outline';
-import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
+import { useAuthStore } from '../../store/authStore';
+import { 
+  Cog6ToothIcon,
+  ChartBarIcon,
+  CpuChipIcon,
+  DocumentTextIcon,
+  FolderIcon, 
+  BoltIcon,
+  UserIcon,
+  ArrowRightOnRectangleIcon
+} from '@heroicons/react/24/outline';
 
 interface NavItem {
   name: string;
@@ -20,7 +21,16 @@ interface NavItem {
   description?: string;
 }
 
-const navigationItems: NavItem[] = [
+export const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const logout = useAuthStore(state => state.logout);
+  const user = useAuthStore(state => state.user);
+  const closeSidebar = useThemeStore(state => state.closeSidebar);
+  const theme = useThemeStore(state => state.theme);
+
+  // Navigation de base
+  const baseNavigationItems: NavItem[] = [
   { 
     name: 'Dashboard', 
     path: '/dashboard', 
@@ -32,6 +42,12 @@ const navigationItems: NavItem[] = [
     path: '/attacks', 
     icon: BoltIcon,
     description: 'Configure and launch attacks'
+  },
+  { 
+    name: 'Agent', 
+    path: '/agent', 
+    icon: CpuChipIcon,
+    description: 'AI-powered automated testing'
   },
   { 
     name: 'Projects', 
@@ -53,13 +69,8 @@ const navigationItems: NavItem[] = [
   }
 ];
 
-export const Sidebar: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const logout = useAuthStore(state => state.logout);
-  const user = useAuthStore(state => state.user);
-  const closeSidebar = useThemeStore(state => state.closeSidebar);
-  const theme = useThemeStore(state => state.theme);
+  // Utiliser la navigation de base (sans Administration)
+  const navigationItems = baseNavigationItems;
 
   const handleNavigation = (path: string) => {
     try {
@@ -97,25 +108,15 @@ export const Sidebar: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <BoltIcon className="w-6 h-6 text-white" />
-          </div>
+        <div className="flex items-center justify-end">
           <div>
-            <h1 className={`text-xl font-bold ${
-              theme === 'light' 
-                ? 'text-slate-800' 
-                : 'text-white'
-            }`}>
-              AI4SIM
-            </h1>
-            <p className={`text-xs ${
-              theme === 'light' 
-                ? 'text-slate-500' 
-                : 'text-white/60'
-            }`}>
-              Security Platform
-            </p>
+            <div className="flex items-center">
+              <img 
+                src="/test.png" 
+                alt="AI4SIM" 
+                className="h-8 w-auto"
+              />
+            </div>
           </div>
         </div>
       </motion.div>
@@ -248,13 +249,16 @@ export const Sidebar: React.FC = () => {
             }`}>
               {user?.username || 'User'}
             </p>
+            {/* N'afficher le rôle que si ce n'est pas un simple "user" */}
+            {user?.role && user.role !== 'user' && (
             <p className={`text-xs capitalize ${
               theme === 'light' 
                 ? 'text-slate-500' 
                 : 'text-white/60'
             }`}>
-              {user?.role || 'admin'}
+                {user.role}
             </p>
+            )}
           </div>
         </div>
 

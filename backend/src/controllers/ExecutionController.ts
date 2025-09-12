@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { Execution, OutputLine } from '../models/Execution';
 import { logger } from '../utils/logger';
 
-// Extend Request interface to include user property
+// Interface corrigée pour les requêtes authentifiées
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -20,6 +19,8 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      // Utiliser directement le modèle Execution au lieu du service
+      const { Execution } = await import('../models/Execution');
       const executions = await Execution.find({ userId })
         .sort({ startTime: -1 })
         .lean();
@@ -42,6 +43,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const executions = await Execution.find({ 
         scenarioId, 
         userId 
@@ -67,6 +69,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const execution = await Execution.findOne({ 
         id: executionId, 
         userId 
@@ -91,6 +94,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const executionData = {
         ...req.body,
         userId,
@@ -118,6 +122,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const execution = await Execution.findOneAndUpdate(
         { id: executionId, userId },
         { ...req.body, updatedAt: new Date() },
@@ -146,6 +151,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const execution = await Execution.findOneAndDelete({ 
         id: executionId, 
         userId 
@@ -168,7 +174,7 @@ export class ExecutionController {
     try {
       const { executionId } = req.params;
       const userId = req.user?.id;
-      const outputLine: OutputLine = {
+      const outputLine = {
         ...req.body,
         timestamp: new Date()
       };
@@ -177,6 +183,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const execution = await Execution.findOneAndUpdate(
         { id: executionId, userId },
         { 
@@ -202,7 +209,7 @@ export class ExecutionController {
     try {
       const { executionId, attackId } = req.params;
       const userId = req.user?.id;
-      const outputLine: OutputLine = {
+      const outputLine = {
         ...req.body,
         timestamp: new Date()
       };
@@ -211,6 +218,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const execution = await Execution.findOneAndUpdate(
         { 
           id: executionId, 
@@ -246,6 +254,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const updateData: any = {
         'attacks.$.status': status,
         updatedAt: new Date()
@@ -286,6 +295,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const execution = await Execution.findOneAndUpdate(
         { 
           id: executionId, 
@@ -320,6 +330,7 @@ export class ExecutionController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
+      const { Execution } = await import('../models/Execution');
       const execution = await Execution.findOneAndUpdate(
         { id: executionId, userId },
         { 
@@ -340,18 +351,61 @@ export class ExecutionController {
     }
   }
 
+  // Get execution statistics
+  async getExecutionStats(req: AuthenticatedRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const { Execution } = await import('../models/Execution');
+      const stats = await Execution.aggregate([
+        { $match: { userId } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      const statusCounts = stats.reduce((acc: any, stat: any) => {
+        acc[stat._id] = stat.count;
+        return acc;
+      }, {});
+
+      // Calculate additional statistics
+      const totalExecutions = Object.values(statusCounts).reduce((sum: any, stat: any) => sum + stat, 0) as number;
+      const successRate = totalExecutions > 0 ? 
+        ((statusCounts.completed || 0) / totalExecutions * 100).toFixed(1) : 0;
+
+      return res.json({
+        statusCounts,
+        totalExecutions,
+        successRate: `${successRate}%`,
+        maxExecutionTime: 30 * 60 * 1000 // 30 minutes in milliseconds
+      });
+
+    } catch (error: any) {
+      logger.error('Error getting execution stats:', error);
+      return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques' });
+    }
+  }
+
   // Clean up stale executions that have been running for too long
   async cleanupStaleExecutions(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
       }
 
       const maxExecutionTime = 30 * 60 * 1000; // 30 minutes
       const cutoffTime = new Date(Date.now() - maxExecutionTime);
 
       // Find executions that are still running but started more than 30 minutes ago
+      const { Execution } = await import('../models/Execution');
       const staleExecutions = await Execution.find({
         userId,
         status: 'running',
@@ -364,72 +418,25 @@ export class ExecutionController {
         await Execution.findByIdAndUpdate(execution._id, {
           status: 'failed',
           endTime: new Date(),
-          updatedAt: new Date(),
-          // Also mark all running attacks as failed
-          $set: {
-            'attacks.$[elem].status': 'failed',
-            'attacks.$[elem].endTime': new Date()
-          }
+          'attacks.$[elem].status': 'failed',
+          'attacks.$[elem].endTime': new Date()
         }, {
           arrayFilters: [{ 'elem.status': { $in: ['running', 'pending'] } }]
         });
 
         cleanedCount++;
-        logger.warn(`Cleaned up stale execution ${execution.id} that was running for ${Math.floor((Date.now() - execution.startTime.getTime()) / 60000)} minutes`);
       }
 
       logger.info(`Cleaned up ${cleanedCount} stale executions for user ${userId}`);
-      return res.json({ 
-        message: `Cleaned up ${cleanedCount} stale executions`,
-        cleanedCount 
-      });
-    } catch (error) {
-      logger.error('Error cleaning up stale executions:', error);
-      return res.status(500).json({ error: 'Failed to cleanup stale executions' });
-    }
-  }
-
-  // Get execution statistics
-  async getExecutionStats(req: AuthenticatedRequest, res: Response) {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const stats = await Execution.aggregate([
-        { $match: { userId } },
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 }
-          }
-        }
-      ]);
-
-      const statusCounts = stats.reduce((acc, stat) => {
-        acc[stat._id] = stat.count;
-        return acc;
-      }, {} as Record<string, number>);
-
-      // Check for potentially stale executions
-      const maxExecutionTime = 30 * 60 * 1000; // 30 minutes
-      const cutoffTime = new Date(Date.now() - maxExecutionTime);
-      
-      const staleCount = await Execution.countDocuments({
-        userId,
-        status: 'running',
-        startTime: { $lt: cutoffTime }
-      });
 
       return res.json({
-        statusCounts,
-        staleExecutions: staleCount,
-        totalExecutions: stats.reduce((sum, stat) => sum + stat.count, 0)
+        message: `${cleanedCount} exécutions obsolètes nettoyées`,
+        cleanedCount
       });
-    } catch (error) {
-      logger.error('Error getting execution stats:', error);
-      return res.status(500).json({ error: 'Failed to get execution stats' });
+
+    } catch (error: any) {
+      logger.error('Error cleaning up stale executions:', error);
+      return res.status(500).json({ error: 'Erreur lors du nettoyage des exécutions obsolètes' });
     }
   }
 } 

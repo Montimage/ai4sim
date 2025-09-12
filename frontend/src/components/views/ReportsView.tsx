@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { executionHistoryService, ExecutionRecord } from '../../services/executionHistoryService';
 import { api } from '../../services/api';
-import { processStatusService } from '../../services/processStatusService';
 import { pdfExportService } from '../../services/pdfExportService';
 import { getToolDisplayName, getAttackDisplayNameFromParams } from '../../constants/toolMapping';
 import {
@@ -122,9 +121,7 @@ export const ReportsView: React.FC = () => {
         })
       );
 
-      // Corriger les statuts d'exécution
-      const correctedReports = await processStatusService.correctExecutionStatuses(enrichedReports);
-      setReports(correctedReports);
+      setReports(enrichedReports);
     } catch (error) {
       console.error('Error loading reports:', error);
     } finally {
@@ -406,15 +403,7 @@ export const ReportsView: React.FC = () => {
                         ? 'bg-slate-100 text-slate-800' 
                         : 'bg-black/30 text-white'
                     }`}>
-                      {JSON.stringify(
-                        Object.fromEntries(
-                          Object.entries(attack.parameters).filter(([key]) => 
-                            key !== 'attackId' && key !== 'targetIndex'
-                          )
-                        ), 
-                        null, 
-                        2
-                      )}
+                      {JSON.stringify(attack.parameters, null, 2)}
                     </pre>
                   </div>
                 )}
@@ -492,7 +481,7 @@ export const ReportsView: React.FC = () => {
                 </span>
               </div>
               <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-white/60'}`}>
-                {target.host}{target.port ? `:${target.port}` : ''}
+                {target.host}
               </p>
             </div>
           ))}

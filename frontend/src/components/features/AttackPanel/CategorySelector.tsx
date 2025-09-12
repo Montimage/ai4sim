@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAttackStore } from '../../../store/attackStore';
-import { BeakerIcon, BoltIcon, CommandLineIcon, WrenchIcon } from '@heroicons/react/24/outline';
+import { BeakerIcon, BoltIcon, CommandLineIcon, WrenchIcon, CogIcon } from '@heroicons/react/24/outline';
 
 const CATEGORIES = [
   {
@@ -8,7 +8,7 @@ const CATEGORIES = [
     name: 'All Tools',
     description: 'View all available tools',
     Icon: WrenchIcon,
-    count: 5
+    count: 6
   },
   {
     id: 'FUZZING',
@@ -30,6 +30,13 @@ const CATEGORIES = [
     description: 'Complete attack frameworks',
     Icon: CommandLineIcon,
     count: 2
+  },
+  {
+    id: 'Other',
+    name: 'Other Tools',
+    description: 'Additional specialized tools',
+    Icon: CogIcon,
+    count: 1
   }
 ];
 

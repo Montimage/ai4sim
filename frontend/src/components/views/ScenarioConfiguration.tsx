@@ -12,7 +12,7 @@ import {
   FolderIcon,
 } from '@heroicons/react/24/outline';
 import { useProjectManagementStore } from '../../store/projectManagementStore';
-import { Scenario, Attack } from '../../types/projectManagement';
+import { Scenario } from '../../types/projectManagement';
 import { Card } from '../shared/UI/Card';
 import { Button } from '../shared/UI/Button';
 import { StatusBadge } from '../shared/UI/StatusBadge';
@@ -104,7 +104,31 @@ export const ScenarioConfiguration: React.FC = () => {
   const handleSave = async (updates: Partial<Scenario>) => {
     if (!scenarioId || !projectId || !campaignId || !scenario) return;
     try {
-      const updatedScenario = { ...scenario, ...updates };
+      // Debug logs
+      console.log('🔧 DEBUG: handleSave called with updates:', updates);
+      console.log('🔧 DEBUG: current scenario attacks:', scenario.attacks);
+      
+      // Ensure attacks is always an array if provided
+      const cleanedUpdates = { ...updates };
+      if (cleanedUpdates.attacks) {
+        // If attacks is nested inside an object, extract the array
+        if (typeof cleanedUpdates.attacks === 'object' && 'attacks' in cleanedUpdates.attacks) {
+          console.log('🔧 DEBUG: Found nested attacks structure, extracting array');
+          cleanedUpdates.attacks = (cleanedUpdates.attacks as any).attacks;
+        }
+        
+        // Ensure it's an array
+        if (!Array.isArray(cleanedUpdates.attacks)) {
+          console.error('🔧 DEBUG: attacks is not an array:', typeof cleanedUpdates.attacks, cleanedUpdates.attacks);
+          throw new Error('Invalid attacks data structure');
+        }
+        
+        console.log('🔧 DEBUG: Cleaned attacks array:', cleanedUpdates.attacks);
+      }
+      
+      const updatedScenario = { ...scenario, ...cleanedUpdates };
+      console.log('🔧 DEBUG: Final updatedScenario being sent:', updatedScenario);
+      
       await updateScenario(scenarioId, updatedScenario, projectId, campaignId);
       toast.success('Changes saved successfully');
     } catch (err) {
@@ -114,8 +138,13 @@ export const ScenarioConfiguration: React.FC = () => {
   };
 
   // Save specific function for attacks
-  const handleSaveAttacks = async (attacks: Attack[]) => {
-    await handleSave({ attacks });
+  const handleSaveAttacks = async (updates: Partial<Scenario>) => {
+    // If updates contains attacks directly, use handleSave
+    if (updates.attacks) {
+      await handleSave(updates);
+    } else {
+      console.error('🔧 DEBUG: handleSaveAttacks called without attacks in updates');
+    }
   };
 
   // Render current tab content

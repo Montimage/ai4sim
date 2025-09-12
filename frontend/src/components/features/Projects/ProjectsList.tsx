@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../../../store/projectStore';
+import { useAuthStore } from '../../../store/authStore';
+import { useNotificationStore, createNotification } from '../../../store/notificationStore';
+import { logger } from '../../../utils/logger';
+import { useThemeStore } from '../../../store/themeStore';
 import { 
   PlusIcon, 
   ShareIcon, 
@@ -13,6 +17,8 @@ import { observer } from 'mobx-react-lite';
 
 interface ProjectsListProps {
   onProjectSelect?: (projectId: string) => void;
+  autoOpenCreateModal?: boolean;
+  onModalClosed?: () => void;
 }
 
 interface ProjectUser {
@@ -28,8 +34,11 @@ interface ProjectSettings {
   users: ProjectUser[];
 }
 
-export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSelect }) => {
+export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSelect, autoOpenCreateModal, onModalClosed }) => {
   const { projects, createProject, selectProject, isLoading, error } = useProjectStore();
+  const { theme } = useThemeStore();
+  const { token } = useAuthStore();
+  const { addNotification } = useNotificationStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectSettings | null>(null);
@@ -37,6 +46,13 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
   const [description, setDescription] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
+
+  // Auto-open modal if requested
+  useEffect(() => {
+    if (autoOpenCreateModal === true) {
+      setShowCreateForm(true);
+    }
+  }, [autoOpenCreateModal]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +72,7 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
     setName('');
     setDescription('');
     setShowCreateForm(false);
+    onModalClosed?.(); // Notifier le parent que le modal est fermé
   };
 
   const handleSelectProject = (projectId: string) => {
@@ -134,11 +151,49 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
   const handleSaveSettings = async () => {
     if (!selectedProject) return;
     
-    // TODO: Implement API call to save project settings
-    console.log('Saving project settings:', selectedProject);
-    
+    try {
+      logger.info(`Saving project settings for ${selectedProject.name}`);
+      
+      // Appel API pour sauvegarder les paramètres du projet
+      const response = await fetch(`/api/projects/${selectedProject._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: selectedProject.name,
+          description: selectedProject.description,
+          users: selectedProject.users
+        })
+      });
+      
+      if (response.ok) {
+        await response.json(); // Parse response but don't store
+        
+        // Mettre à jour le store local
+        // The projects state is managed by useProjectStore, so we don't need to update it here directly.
+        // The selectProject function will update the project in the store.
+        
+        addNotification(createNotification.success(
+          'Succès',
+          'Paramètres du projet sauvegardés avec succès'
+        ));
+        logger.info(`Project settings saved successfully for ${selectedProject.name}`);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la sauvegarde');
+      }
+    } catch (error: any) {
+      logger.error('Error saving project settings:', error);
+      addNotification(createNotification.error(
+        'Erreur',
+        `Erreur lors de la sauvegarde: ${error.message}`
+      ));
+    } finally {
     setShowSettingsModal(false);
     setSelectedProject(null);
+    }
   };
 
   const getRoleColor = (role: string) => {
@@ -202,7 +257,10 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
           <div className="flex justify-end space-x-3">
             <button
               type="button"
-              onClick={() => setShowCreateForm(false)}
+              onClick={() => {
+                setShowCreateForm(false);
+                onModalClosed?.(); // Notifier le parent que le modal est fermé
+              }}
               className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:bg-gray-100 transition ease-in-out duration-150"
             >
               Cancel
@@ -227,9 +285,7 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
         </div>
       ) : (
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-          {projects.map((project) => {
-            console.log('🎯 Rendering project:', project);
-            return (
+          {projects.map((project) => (
             <li key={project._id} className="py-3">
               <div className="flex items-center justify-between">
                 <button 
@@ -251,10 +307,13 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log('🔧 Settings button clicked for project:', project.name);
                       handleOpenSettings(project);
                     }}
-                    className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500 focus:bg-gray-100 dark:hover:text-gray-300 dark:focus:bg-gray-700"
+                    className={`p-1 rounded-full transition-colors focus:outline-none ${
+                      theme === 'light' 
+                        ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:text-gray-800 focus:bg-gray-100'
+                        : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700 focus:text-gray-300 focus:bg-gray-700'
+                    }`}
                     title="Project settings"
                   >
                     <Cog6ToothIcon className="w-5 h-5" />
@@ -268,8 +327,7 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
                 </div>
               </div>
             </li>
-            );
-          })}
+          ))}
         </ul>
       )}
 

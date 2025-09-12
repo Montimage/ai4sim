@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useThemeStore } from '../../../../store/themeStore';
 import { 
   PlusIcon, 
   TrashIcon, 
@@ -11,23 +12,29 @@ import {
   BoltIcon,
   ShieldCheckIcon,
   CommandLineIcon,
+  MagnifyingGlassIcon,
+  ArrowPathIcon,
+  InformationCircleIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { Scenario, Attack } from '../../../../types/projectManagement';
 import { ATTACK_TOOLS } from '../../../../constants/attackTools';
 import { AttackTool, AttackVariant } from '../../../../types/attackTool';
-import { Card } from '../../../shared/UI/Card';
-import { Button } from '../../../shared/UI/Button';
-import { StatusBadge } from '../../../shared/UI/StatusBadge';
+import { Button, StatusBadge, Card } from '../../../shared/UI';
 
 interface ScenarioAttacksProps {
   scenario: Scenario;
-  onSave: (attacks: Attack[]) => Promise<void>;
+  onSave: (updates: Partial<Scenario>) => Promise<void>;
 }
 
 type FunnelStep = 'overview' | 'category' | 'tool' | 'attack' | 'configure';
 
 const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) => {
+  const theme = useThemeStore(state => state.theme);
   const [attacks, setAttacks] = useState<Attack[]>(scenario.attacks || []);
+  const [selectedScenarioAttack, setSelectedScenarioAttack] = useState<Attack | null>(null);
+  const [selectedAttackIndex, setSelectedAttackIndex] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [currentStep, setCurrentStep] = useState<FunnelStep>('overview');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTool, setSelectedTool] = useState<AttackTool | null>(null);
@@ -38,105 +45,6 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
 
   // Get unique categories
   const categories = Array.from(new Set(ATTACK_TOOLS.map(tool => tool.category)));
-
-  // Get tools for selected category
-  const getToolsForCategory = (category: string) => {
-    return ATTACK_TOOLS.filter(tool => tool.category === category);
-  };
-
-  // Get selected attack based on tool and attack ID
-  const getSelectedAttack = (): AttackVariant | null => {
-    if (!selectedTool || !selectedAttackId) return null;
-    return selectedTool.attacks.find(attack => attack.id === selectedAttackId) || null;
-  };
-
-  const selectedAttack = getSelectedAttack();
-
-  const resetFunnel = () => {
-    setCurrentStep('overview');
-    setSelectedCategory(null);
-    setSelectedTool(null);
-    setSelectedAttackId(null);
-    setParameters({});
-    setSelectedTargetIndex(null);
-  };
-
-  const handleAddAttack = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTool || !selectedAttack || selectedTargetIndex === null) return;
-
-    // Integrate selected target information into parameters
-    const updatedParameters: Record<string, any> = { ...parameters };
-    if (selectedTargetIndex !== null && scenario.targets[selectedTargetIndex]) {
-      const target = scenario.targets[selectedTargetIndex];
-      updatedParameters.targetIndex = selectedTargetIndex.toString();
-      updatedParameters.attackId = selectedAttackId;
-      
-      // Replace ALL target-related parameters with selected target values
-      Object.keys(updatedParameters).forEach(key => {
-        const lowerKey = key.toLowerCase();
-        if (lowerKey.includes('target') && (lowerKey.includes('ip') || lowerKey.includes('host'))) {
-          updatedParameters[key] = target.host;
-        }
-        if (lowerKey.includes('target') && lowerKey.includes('port') && target.port) {
-          updatedParameters[key] = target.port.toString();
-        }
-      });
-      
-      // Also check parameter definitions and replace them based on type or name
-      if (selectedAttack.parameters) {
-        Object.entries(selectedAttack.parameters).forEach(([key, param]) => {
-          // Check if this is a target parameter by type or name
-          const isTargetParam = param.type === 'target' || 
-                               (key.toLowerCase().includes('target') && 
-                                (key.toLowerCase().includes('ip') || key.toLowerCase().includes('host')));
-          
-          if (isTargetParam) {
-            updatedParameters[key] = target.host;
-          }
-          
-          // Handle port parameters
-          const lowerKey = key.toLowerCase();
-          if (lowerKey.includes('target') && lowerKey.includes('port') && target.port) {
-            updatedParameters[key] = target.port.toString();
-          }
-        });
-      }
-    }
-
-    const newAttack: Attack = {
-      tool: selectedTool.id,
-      parameters: updatedParameters,
-      status: 'idle',
-      processId: undefined,
-      startTime: undefined,
-      endTime: undefined,
-      logs: [],
-      results: null
-    };
-
-    const updatedAttacks = [...attacks, newAttack];
-
-    try {
-      setIsSubmitting(true);
-      await onSave(updatedAttacks);
-      setAttacks(updatedAttacks);
-      resetFunnel();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRemoveAttack = async (index: number) => {
-    const updatedAttacks = attacks.filter((_, i) => i !== index);
-    try {
-      setIsSubmitting(true);
-      await onSave(updatedAttacks);
-      setAttacks(updatedAttacks);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // Get tool and attack info from a scenario attack
   const getToolAndAttackInfo = (attack: Attack) => {
@@ -166,160 +74,139 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
     return `${target.name} (${target.host})`;
   };
 
+  // Get tools for selected category
+  const getToolsForCategory = (category: string) => {
+    return ATTACK_TOOLS.filter(tool => tool.category === category);
+  };
+
+  // Get selected attack variant based on tool and attack ID
+  const getSelectedAttackVariant = (): AttackVariant | null => {
+    if (!selectedTool || !selectedAttackId) return null;
+    return selectedTool.attacks.find(attack => attack.id === selectedAttackId) || null;
+  };
+
+  const selectedAttackVariant = getSelectedAttackVariant();
+
+  // Filter attacks based on search
+  const filteredAttacks = attacks.filter(attack => {
+    const toolInfo = getToolAndAttackInfo(attack);
+    return toolInfo.toolName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           toolInfo.attackName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           toolInfo.category.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const handleSelectAttack = (attack: Attack, index: number) => {
+    setSelectedScenarioAttack(attack);
+    setSelectedAttackIndex(index);
+  };
+
+  const handleRemoveAttack = async (index: number) => {
+    const updatedAttacks = attacks.filter((_, i) => i !== index);
+    try {
+      setIsSubmitting(true);
+      await onSave({ attacks: updatedAttacks });
+      setAttacks(updatedAttacks);
+      if (selectedAttackIndex === index) {
+        setSelectedScenarioAttack(null);
+        setSelectedAttackIndex(null);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetFunnel = () => {
+    setCurrentStep('overview');
+    setSelectedCategory(null);
+    setSelectedTool(null);
+    setSelectedAttackId(null);
+    setParameters({});
+    setSelectedTargetIndex(null);
+  };
+
+  const handleAddAttack = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTool || !selectedAttackVariant || selectedTargetIndex === null) return;
+
+    // Debug logs
+    console.log('🔧 DEBUG: selectedTool:', selectedTool);
+    console.log('🔧 DEBUG: selectedTool.id:', selectedTool.id);
+    console.log('🔧 DEBUG: selectedAttackVariant:', selectedAttackVariant);
+    console.log('🔧 DEBUG: selectedAttackId:', selectedAttackId);
+
+    // Integrate selected target information into parameters
+    const updatedParameters: Record<string, any> = { ...parameters };
+    if (selectedTargetIndex !== null && scenario.targets[selectedTargetIndex]) {
+      const target = scenario.targets[selectedTargetIndex];
+      updatedParameters.targetIndex = selectedTargetIndex.toString();
+      updatedParameters.attackId = selectedAttackId;
+      
+      // Replace target-related parameters with selected target values
+      Object.keys(updatedParameters).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes('target') && (lowerKey.includes('ip') || lowerKey.includes('host'))) {
+          updatedParameters[key] = target.host;
+        }
+      });
+      
+      // Also check parameter definitions and replace them based on type or name
+      if (selectedAttackVariant.parameters) {
+        Object.entries(selectedAttackVariant.parameters).forEach(([key, param]) => {
+          // Check if this is a target parameter by type or name
+          const isTargetParam = param.type === 'target' || 
+                               (key.toLowerCase().includes('target') && 
+                                (key.toLowerCase().includes('ip') || key.toLowerCase().includes('host')));
+          
+          if (isTargetParam) {
+            updatedParameters[key] = target.host;
+          }
+        });
+      }
+    }
+
+    const newAttack: Attack = {
+      tool: selectedTool.id,
+      parameters: {
+        ...updatedParameters,
+        attackId: selectedAttackVariant.id // Ajouter l'ID de la variante d'attaque
+      },
+      status: 'idle',
+      processId: undefined,
+      startTime: undefined,
+      endTime: undefined,
+      logs: [],
+      results: null
+    };
+
+    console.log('🔧 DEBUG: newAttack being created:', newAttack);
+
+    const updatedAttacks = [...attacks, newAttack];
+
+    try {
+      setIsSubmitting(true);
+      console.log('🔧 DEBUG: Saving attacks to scenario:', updatedAttacks);
+      await onSave({ attacks: updatedAttacks });
+      setAttacks(updatedAttacks);
+      resetFunnel();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
       case 'fuzzing':
         return BoltIcon;
-      case 'network':
-        return CpuChipIcon;
-      case 'ai':
+      case 'simulation':
         return BeakerIcon;
+      case 'framework':
+        return CommandLineIcon;
+      case 'other':
+        return Cog6ToothIcon;
       default:
         return ShieldCheckIcon;
     }
   };
-
-  const renderBreadcrumb = () => {
-    const steps = [
-      { id: 'overview', name: 'Overview' },
-      { id: 'category', name: selectedCategory || 'Category' },
-      { id: 'tool', name: selectedTool?.name || 'Tool' },
-      { id: 'attack', name: selectedAttack?.name || 'Attack' },
-      { id: 'configure', name: 'Configure' }
-    ];
-
-    const currentStepIndex = steps.findIndex(step => step.id === currentStep);
-
-  return (
-      <nav className="flex items-center space-x-2 text-sm">
-        {steps.slice(0, currentStepIndex + 1).map((step, index) => (
-          <React.Fragment key={step.id}>
-            {index > 0 && <ChevronRightIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />}
-            <button
-              onClick={() => {
-                if (index < currentStepIndex) {
-                  setCurrentStep(step.id as FunnelStep);
-                }
-              }}
-              className={`px-3 py-1 rounded-lg transition-all duration-200 ${
-                index === currentStepIndex
-                  ? 'text-white bg-gradient-to-r from-primary-500 to-primary-600 font-bold shadow-md'
-                  : index < currentStepIndex
-                  ? 'text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold hover:bg-primary-50 dark:hover:bg-primary-900/20'
-                  : 'text-gray-500 dark:text-gray-400 font-medium'
-              }`}
-            >
-              {step.name}
-            </button>
-          </React.Fragment>
-        ))}
-      </nav>
-    );
-  };
-
-  const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
-            <BeakerIcon className="w-7 h-7 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Attack Configuration</h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Configure and manage attacks for this scenario ({attacks.length} configured)
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="primary"
-          icon={<PlusIcon className="w-4 h-4" />}
-          onClick={() => setCurrentStep('category')}
-        >
-          Add Attack
-        </Button>
-      </div>
-
-      {/* Configured Attacks */}
-      {attacks.length > 0 ? (
-      <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Configured Attacks
-        </h3>
-          <div className="grid grid-cols-1 gap-4">
-            {attacks.map((attack, index) => {
-              const { toolName, attackName, category } = getToolAndAttackInfo(attack);
-              const targetInfo = getTargetInfoFromAttack(attack);
-              
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card className="hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
-                          <BoltIcon className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white text-lg">
-                        {attackName}
-                          </h4>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <StatusBadge status="info" size="sm">
-                        {toolName}
-                            </StatusBadge>
-                            <StatusBadge status="neutral" size="sm">
-                          {category}
-                            </StatusBadge>
-                    </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center">
-                            <CpuChipIcon className="w-4 h-4 mr-1" />
-                            Target: {targetInfo}
-                          </p>
-                    </div>
-                  </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveAttack(index)}
-                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
-          </div>
-        ) : (
-        <Card className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-600">
-          <div className="p-4 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <BeakerIcon className="w-10 h-10 text-white" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-            No attacks configured
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-            Start by adding your first attack to this scenario. Choose from various categories like fuzzing, network attacks, and AI-based testing.
-          </p>
-          <Button
-            variant="primary"
-            icon={<PlusIcon className="w-4 h-4" />}
-            onClick={() => setCurrentStep('category')}
-          >
-            Add First Attack
-          </Button>
-        </Card>
-      )}
-    </div>
-  );
 
   const renderCategorySelection = () => (
     <div className="space-y-6">
@@ -365,7 +252,7 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                   </div>
                   <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     {category.toUpperCase()}
-        </h4>
+                  </h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     {toolCount} tool{toolCount !== 1 ? 's' : ''} available
                   </p>
@@ -411,7 +298,7 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {tools.map((tool) => (
             <motion.div
-                  key={tool.id}
+              key={tool.id}
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -428,11 +315,11 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                   </div>
                   <div className="flex-1">
                     <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                    {tool.name}
+                      {tool.name}
                     </h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    {tool.description}
-                  </p>
+                      {tool.description}
+                    </p>
                     <div className="flex items-center space-x-2">
                       <StatusBadge status="neutral" size="sm">
                         {tool.attacks.length} attack{tool.attacks.length !== 1 ? 's' : ''}
@@ -443,9 +330,9 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                 </div>
               </Card>
             </motion.div>
-              ))}
-            </div>
-          </div>
+          ))}
+        </div>
+      </div>
     );
   };
 
@@ -455,7 +342,7 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-            <div>
+          <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
               Select {selectedTool.name} Attack
             </h3>
@@ -473,9 +360,9 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-                {selectedTool.attacks.map((attack) => (
+          {selectedTool.attacks.map((attack) => (
             <motion.div
-                    key={attack.id}
+              key={attack.id}
               whileHover={{ scale: 1.01, x: 4 }}
               whileTap={{ scale: 0.99 }}
             >
@@ -493,11 +380,11 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                     </div>
                     <div>
                       <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                      {attack.name}
+                        {attack.name}
                       </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      {attack.description}
-                    </p>
+                        {attack.description}
+                      </p>
                       <div className="flex items-center space-x-2">
                         <StatusBadge status="neutral" size="sm">
                           {Object.keys(attack.parameters || {}).length} parameter{Object.keys(attack.parameters || {}).length !== 1 ? 's' : ''}
@@ -516,14 +403,14 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
   };
 
   const renderConfiguration = () => {
-    if (!selectedTool || !selectedAttack) return null;
+    if (!selectedTool || !selectedAttackVariant) return null;
     
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              Configure {selectedAttack.name}
+              Configure {selectedAttackVariant.name}
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
               Set parameters and select target for this attack
@@ -584,11 +471,11 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                         </div>
                         <div>
                           <p className="font-semibold text-gray-900 dark:text-white">
-                      {target.name}
+                            {target.name}
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {target.host}{target.port ? `:${target.port}` : ''}
-                    </p>
+                            {target.host}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -603,12 +490,12 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                 <p className="text-gray-600 dark:text-gray-400">
                   No targets configured. Please add targets first.
                 </p>
-            </div>
-          )}
+              </div>
+            )}
           </Card>
 
           {/* Parameters */}
-          {selectedAttack.parameters && Object.keys(selectedAttack.parameters).length > 0 && (
+          {selectedAttackVariant.parameters && Object.keys(selectedAttackVariant.parameters).length > 0 && (
             <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-white dark:from-green-900/20 dark:to-gray-800">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-green-600 shadow-md">
@@ -617,9 +504,9 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                 <h4 className="text-lg font-bold text-gray-900 dark:text-white">
                   Attack Parameters
                 </h4>
-                      </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(selectedAttack.parameters).map(([key, param]) => {
+                {Object.entries(selectedAttackVariant.parameters).map(([key, param]) => {
                   // Check if this is a target-related parameter by type or name
                   const isTargetParam = param.type === 'target' || 
                                        (key.toLowerCase().includes('target') && 
@@ -645,7 +532,7 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
                           className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                         >
                           <option value="">Select {param.label || key}</option>
-                          {param.options.map((option) => (
+                          {param.options.map((option: string) => (
                             <option key={option} value={option}>
                               {option}
                             </option>
@@ -704,27 +591,249 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Breadcrumb */}
-      {currentStep !== 'overview' && (
-        <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-md">
-          {renderBreadcrumb()}
-        </Card>
-      )}
+    <div className={`flex flex-col ${theme === 'light' ? 'bg-white' : 'bg-gray-900'}`} style={{ height: 'calc(100vh - 200px)' }}>
+      {/* Header */}
+      <div className={`flex-shrink-0 p-6 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className={`p-2 rounded-lg ${theme === 'light' ? 'bg-red-100' : 'bg-red-500/20'}`}>
+              <BeakerIcon className={`w-6 h-6 ${theme === 'light' ? 'text-red-600' : 'text-red-400'}`} />
+            </div>
+            <div>
+              <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>Attack Configuration</h2>
+              <p className={theme === 'light' ? 'text-slate-600' : 'text-white/60'}>
+                Configure attacks for your scenario ({attacks.length} total)
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              icon={<ArrowPathIcon className="w-4 h-4" />}
+              onClick={() => setCurrentStep('overview')}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
 
-      {/* Content */}
-      <motion.div
-        key={currentStep}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.2 }}
-      >
-        {currentStep === 'overview' && renderOverview()}
-        {currentStep === 'category' && renderCategorySelection()}
-        {currentStep === 'tool' && renderToolSelection()}
-        {currentStep === 'attack' && renderAttackSelection()}
-        {currentStep === 'configure' && renderConfiguration()}
-      </motion.div>
+      {/* Search and Controls */}
+      <div className={`flex-shrink-0 p-6 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <MagnifyingGlassIcon className={`w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'light' ? 'text-slate-400' : 'text-white/40'}`} />
+              <input
+                type="text"
+                placeholder="Search attacks..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'light'
+                    ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                    : 'bg-white/10 border-white/20 text-white placeholder-white/40'
+                }`}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="primary"
+              icon={<PlusIcon className="w-4 h-4" />}
+              onClick={() => setCurrentStep('category')}
+            >
+              Add Attack
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0">
+        {/* Left Panel - Attacks List */}
+        <div className={`w-1/3 border-r flex flex-col ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+          <div className={`flex-shrink-0 p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+            <h3 className={`text-lg font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+              Attacks ({filteredAttacks.length})
+            </h3>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {filteredAttacks.length > 0 ? (
+              filteredAttacks.map((attack, index) => {
+                const { toolName, attackName, category } = getToolAndAttackInfo(attack);
+                const targetInfo = getTargetInfoFromAttack(attack);
+                
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                      selectedAttackIndex === index 
+                        ? theme === 'light'
+                          ? 'bg-red-50 border-red-300'
+                          : 'bg-red-500/20 border-red-500/50'
+                        : theme === 'light'
+                          ? 'bg-white border-slate-200 hover:bg-slate-50'
+                          : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    }`}
+                    onClick={() => handleSelectAttack(attack, index)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <BoltIcon className={`w-5 h-5 ${theme === 'light' ? 'text-red-600' : 'text-red-400'}`} />
+                        <div>
+                          <h4 className={`font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                            {attackName}
+                          </h4>
+                          <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>
+                            {toolName}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+                        <StatusBadge status="warning">
+                          {category}
+                        </StatusBadge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<TrashIcon className="w-4 h-4" />}
+                          onClick={() => handleRemoveAttack(index)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      <div>
+                        <p className={theme === 'light' ? 'text-slate-500' : 'text-white/60'}>Target</p>
+                        <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                          {targetInfo}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            ) : (
+              <div className="text-center py-12">
+                <BeakerIcon className={`w-12 h-12 mx-auto mb-4 ${theme === 'light' ? 'text-slate-300' : 'text-white/40'}`} />
+                <p className={theme === 'light' ? 'text-slate-500' : 'text-white/60'}>No attacks found</p>
+                <p className={`text-sm mt-2 ${theme === 'light' ? 'text-slate-400' : 'text-white/40'}`}>
+                  {searchTerm ? 'Try adjusting your search' : 'Add your first attack to get started'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Panel - Attack Details / Configuration */}
+        <div className="w-2/3 flex flex-col">
+          {currentStep !== 'overview' ? (
+            <>
+              <div className={`flex-shrink-0 p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+                <div className="flex items-center justify-between">
+                  <h3 className={`text-lg font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                    Add New Attack
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentStep('overview')}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                {currentStep === 'category' && renderCategorySelection()}
+                {currentStep === 'tool' && renderToolSelection()}
+                {currentStep === 'attack' && renderAttackSelection()}
+                {currentStep === 'configure' && renderConfiguration()}
+              </div>
+            </>
+          ) : selectedScenarioAttack ? (
+            <>
+              <div className={`flex-shrink-0 p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+                <h3 className={`text-lg font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>Attack Details</h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className={`rounded-lg p-6 ${theme === 'light' ? 'bg-slate-50 border border-slate-200' : 'bg-white/5'}`}>
+                  <h4 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                    <InformationCircleIcon className="w-5 h-5 mr-2" />
+                    General Information
+                  </h4>
+                  
+                  {(() => {
+                    const { toolName, attackName, category } = getToolAndAttackInfo(selectedScenarioAttack);
+                    const targetInfo = getTargetInfoFromAttack(selectedScenarioAttack);
+                    
+                    return (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>Attack Name</p>
+                          <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{attackName}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>Tool</p>
+                          <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{toolName}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>Category</p>
+                          <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{category}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>Target</p>
+                          <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{targetInfo}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Parameters Section */}
+                {selectedScenarioAttack.parameters && (
+                  <div className={`mt-6 rounded-lg p-6 ${theme === 'light' ? 'bg-slate-50 border border-slate-200' : 'bg-white/5'}`}>
+                    <h4 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                      <CommandLineIcon className="w-5 h-5 mr-2" />
+                      Parameters
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.entries(selectedScenarioAttack.parameters).map(([key, value]) => (
+                        <div key={key}>
+                          <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>{key}</p>
+                          <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                            {typeof value === 'string' ? value : JSON.stringify(value)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <BeakerIcon className={`w-16 h-16 mx-auto mb-4 ${theme === 'light' ? 'text-slate-300' : 'text-white/40'}`} />
+                <h3 className={`text-lg font-semibold mb-2 ${theme === 'light' ? 'text-slate-700' : 'text-white/80'}`}>
+                  Select an attack
+                </h3>
+                <p className={theme === 'light' ? 'text-slate-500' : 'text-white/60'}>
+                  Choose an attack from the list to view its details or add a new one
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useThemeStore } from '../../../../store/themeStore';
 import { 
   PlusIcon, 
   TrashIcon, 
   ServerIcon,
-  GlobeAltIcon,
-  CheckIcon
+  CheckIcon,
+  MagnifyingGlassIcon,
+  ArrowPathIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import { Scenario, Target } from '../../../../types/projectManagement';
-import { Card } from '../../../shared/UI/Card';
-import { Button } from '../../../shared/UI/Button';
-import { StatusBadge } from '../../../shared/UI/StatusBadge';
+import { Button, StatusBadge } from '../../../shared/UI';
 
 interface ScenarioTargetsProps {
   scenario: Scenario;
@@ -18,13 +19,23 @@ interface ScenarioTargetsProps {
 }
 
 const ScenarioTargets: React.FC<ScenarioTargetsProps> = ({ scenario, onSave }) => {
+  const theme = useThemeStore(state => state.theme);
   const [targets, setTargets] = useState<Target[]>(scenario.targets || []);
+  const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
+  const [selectedTargetIndex, setSelectedTargetIndex] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTarget, setNewTarget] = useState({
     host: '',
     name: ''
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Filter targets based on search
+  const filteredTargets = targets.filter(target =>
+    target.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    target.host.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleAddTarget = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,180 +68,281 @@ const ScenarioTargets: React.FC<ScenarioTargetsProps> = ({ scenario, onSave }) =
       setIsSubmitting(true);
       await onSave({ targets: updatedTargets });
       setTargets(updatedTargets);
+      if (selectedTargetIndex === index) {
+        setSelectedTarget(null);
+        setSelectedTargetIndex(null);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleSelectTarget = (target: Target, index: number) => {
+    setSelectedTarget(target);
+    setSelectedTargetIndex(index);
+  };
+
   return (
-    <div className="p-6 space-y-6">
+    <div className={`flex flex-col ${theme === 'light' ? 'bg-white' : 'bg-gray-900'}`} style={{ height: 'calc(100vh - 200px)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
-            <ServerIcon className="w-7 h-7 text-white" />
+      <div className={`flex-shrink-0 p-6 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className={`p-2 rounded-lg ${theme === 'light' ? 'bg-blue-100' : 'bg-blue-500/20'}`}>
+              <ServerIcon className={`w-6 h-6 ${theme === 'light' ? 'text-blue-600' : 'text-blue-400'}`} />
+            </div>
+            <div>
+              <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>Target Configuration</h2>
+              <p className={theme === 'light' ? 'text-slate-600' : 'text-white/60'}>
+                Configure target systems for your scenario ({targets.length} total)
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Target Configuration</h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Define and manage targets for your security testing scenario ({targets.length} configured)
-            </p>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              icon={<ArrowPathIcon className="w-4 h-4" />}
+              onClick={() => {/* Refresh logic if needed */}}
+            >
+              Refresh
+            </Button>
           </div>
         </div>
-        <Button
-          variant="primary"
-          icon={<PlusIcon className="w-4 h-4" />}
-          onClick={() => setShowAddForm(!showAddForm)}
-        >
-          Add Target
-        </Button>
       </div>
 
-      {/* Add Target Form */}
-      {showAddForm && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-white dark:from-green-900/20 dark:to-gray-800">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-green-600 shadow-md">
-                <PlusIcon className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Add New Target
-              </h3>
+      {/* Search and Controls */}
+      <div className={`flex-shrink-0 p-6 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <MagnifyingGlassIcon className={`w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'light' ? 'text-slate-400' : 'text-white/40'}`} />
+              <input
+                type="text"
+                placeholder="Search targets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'light'
+                    ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                    : 'bg-white/10 border-white/20 text-white placeholder-white/40'
+                }`}
+              />
             </div>
-            
-            <form onSubmit={handleAddTarget} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                    Target Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={newTarget.name}
-                    onChange={(e) => setNewTarget({ ...newTarget, name: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                    placeholder="Web Server"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="host" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                    IP Address / Hostname
-                  </label>
-                  <input
-                    type="text"
-                    id="host"
-                    value={newTarget.host}
-                    onChange={(e) => setNewTarget({ ...newTarget, host: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                    placeholder="192.168.1.100 or example.com"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-end space-x-3 pt-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setNewTarget({ host: '', name: '' });
-                  }}
-                  className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  loading={isSubmitting}
-                  icon={<CheckIcon className="w-4 h-4" />}
-                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg"
-                >
-                  Add Target
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </motion.div>
-      )}
+          </div>
 
-      {/* Targets List */}
-      {targets.length > 0 ? (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Configured Targets
-          </h3>
-          <div className="grid grid-cols-1 gap-4">
-            {targets.map((target, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
-                        <ServerIcon className="w-6 h-6 text-white" />
-                      </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="primary"
+              icon={<PlusIcon className="w-4 h-4" />}
+              onClick={() => setShowAddForm(true)}
+            >
+              Add Target
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0">
+        {/* Left Panel - Targets List */}
+        <div className={`w-1/3 border-r flex flex-col ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+          <div className={`flex-shrink-0 p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+            <h3 className={`text-lg font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+              Targets ({filteredTargets.length})
+            </h3>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {filteredTargets.length > 0 ? (
+              filteredTargets.map((target, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                    selectedTargetIndex === index 
+                      ? theme === 'light'
+                        ? 'bg-blue-50 border-blue-300'
+                        : 'bg-blue-500/20 border-blue-500/50'
+                      : theme === 'light'
+                        ? 'bg-white border-slate-200 hover:bg-slate-50'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}
+                  onClick={() => handleSelectTarget(target, index)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <ServerIcon className={`w-5 h-5 ${theme === 'light' ? 'text-blue-600' : 'text-blue-400'}`} />
                       <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-lg">
+                        <h4 className={`font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
                           {target.name}
                         </h4>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <StatusBadge status="info" size="sm">
-                            Target #{index + 1}
-                          </StatusBadge>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center">
-                          <GlobeAltIcon className="w-4 h-4 mr-1" />
-                          {target.host}
+                        <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>
+                          Target #{index + 1}
                         </p>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveTarget(index)}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <StatusBadge status="success">
+                        Active
+                      </StatusBadge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<TrashIcon className="w-4 h-4" />}
+                        onClick={() => handleRemoveTarget(index)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                </Card>
-              </motion.div>
-            ))}
+
+                  <div className="grid grid-cols-1 gap-4 text-sm">
+                    <div>
+                      <p className={theme === 'light' ? 'text-slate-500' : 'text-white/60'}>Host</p>
+                      <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                        {target.host}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <ServerIcon className={`w-12 h-12 mx-auto mb-4 ${theme === 'light' ? 'text-slate-300' : 'text-white/40'}`} />
+                <p className={theme === 'light' ? 'text-slate-500' : 'text-white/60'}>No targets found</p>
+                <p className={`text-sm mt-2 ${theme === 'light' ? 'text-slate-400' : 'text-white/40'}`}>
+                  {searchTerm ? 'Try adjusting your search' : 'Add your first target to get started'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      ) : (
-        <Card className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-600">
-          <div className="p-4 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <ServerIcon className="w-10 h-10 text-white" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-            No targets configured
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-            Start by adding your first target to this scenario. Targets define what systems will be tested during security assessments.
-          </p>
-          <Button
-            variant="primary"
-            icon={<PlusIcon className="w-4 h-4" />}
-            onClick={() => setShowAddForm(true)}
-          >
-            Add First Target
-          </Button>
-        </Card>
-      )}
+
+        {/* Right Panel - Target Details / Add Form */}
+        <div className="w-2/3 flex flex-col">
+          {showAddForm ? (
+            <>
+              <div className={`flex-shrink-0 p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+                <div className="flex items-center justify-between">
+                  <h3 className={`text-lg font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>Add New Target</h3>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowAddForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <form onSubmit={handleAddTarget} className="space-y-6">
+                  <div className={`rounded-lg p-6 ${theme === 'light' ? 'bg-slate-50 border border-slate-200' : 'bg-white/5'}`}>
+                    <h4 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                      <PlusIcon className="w-5 h-5 mr-2" />
+                      Target Information
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="col-span-1">
+                        <label className={`block text-sm font-medium mb-2 ${theme === 'light' ? 'text-slate-700' : 'text-white/80'}`}>
+                          Target Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={newTarget.name}
+                          onChange={(e) => setNewTarget({ ...newTarget, name: e.target.value })}
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'light'
+                              ? 'bg-white border-slate-300 text-slate-900'
+                              : 'bg-white/10 border-white/20 text-white'
+                          }`}
+                          placeholder="Web Server"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="col-span-1">
+                        <label className={`block text-sm font-medium mb-2 ${theme === 'light' ? 'text-slate-700' : 'text-white/80'}`}>
+                          Host / IP Address *
+                        </label>
+                        <input
+                          type="text"
+                          value={newTarget.host}
+                          onChange={(e) => setNewTarget({ ...newTarget, host: e.target.value })}
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'light'
+                              ? 'bg-white border-slate-300 text-slate-900'
+                              : 'bg-white/10 border-white/20 text-white'
+                          }`}
+                          placeholder="192.168.1.100"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowAddForm(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        loading={isSubmitting}
+                        icon={<CheckIcon className="w-4 h-4" />}
+                      >
+                        Add Target
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </>
+          ) : selectedTarget ? (
+            <>
+              <div className={`flex-shrink-0 p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
+                <h3 className={`text-lg font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>Target Details</h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className={`rounded-lg p-6 ${theme === 'light' ? 'bg-slate-50 border border-slate-200' : 'bg-white/5'}`}>
+                  <h4 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                    <InformationCircleIcon className="w-5 h-5 mr-2" />
+                    General Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>Name</p>
+                      <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{selectedTarget.name}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-white/60'}`}>Host</p>
+                      <p className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{selectedTarget.host}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <ServerIcon className={`w-16 h-16 mx-auto mb-4 ${theme === 'light' ? 'text-slate-300' : 'text-white/40'}`} />
+                <h3 className={`text-lg font-semibold mb-2 ${theme === 'light' ? 'text-slate-700' : 'text-white/80'}`}>
+                  Select a target
+                </h3>
+                <p className={theme === 'light' ? 'text-slate-500' : 'text-white/60'}>
+                  Choose a target from the list to view its details
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

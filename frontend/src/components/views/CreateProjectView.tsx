@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjectStore } from '../../store/projectStore';
 import { useThemeStore } from '../../store/themeStore';
 import { Card } from '../shared/UI/Card';
@@ -25,6 +25,7 @@ interface ProjectFormData {
 
 export const CreateProjectView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useThemeStore(state => state.theme);
   const { projects, createProject, deleteProject, isLoading, error, fetchProjects } = useProjectStore();
   
@@ -40,6 +41,20 @@ export const CreateProjectView: React.FC = () => {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  // Auto-open modal if requested from Dashboard
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      // Délai d'1 seconde avant d'afficher le modal si venant du Dashboard
+      const timer = setTimeout(() => {
+        setShowProjectForm(true);
+        // Nettoyer le paramètre URL après utilisation
+        setSearchParams({});
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
 
   const validateForm = (): boolean => {
     const errors: Partial<ProjectFormData> = {};
@@ -338,6 +353,7 @@ export const CreateProjectView: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            style={{ top: 0 }}
             onClick={() => setShowProjectForm(false)}
           >
               <motion.div

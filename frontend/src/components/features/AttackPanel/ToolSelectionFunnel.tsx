@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { getFilteredTools } from '../../../constants/tools';
 import { useAttackStore } from '../../../store/attackStore';
-import { TOOLS } from '../../../constants/tools';
 import { useThemeStore } from '../../../store/themeStore';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { LockClosedIcon } from '@heroicons/react/24/solid';
@@ -32,7 +32,7 @@ export const ToolSelectionFunnel: React.FC<ToolSelectionFunnelProps> = ({ tabId 
   useEffect(() => {
     if (tabState?.selectedTool) {
       // Si un outil est déjà sélectionné, on affiche les attaques disponibles
-      const tool = TOOLS.find(t => t.id === tabState.selectedTool);
+      const tool = getFilteredTools().find(t => t.id === tabState.selectedTool);
       if (tool?.attacks && tool.attacks.length > 1) {
         setCurrentStep('attack');
       } else {
@@ -50,13 +50,14 @@ export const ToolSelectionFunnel: React.FC<ToolSelectionFunnelProps> = ({ tabId 
   // Filtrer les outils par catégorie
   const categories = ['ALL', 'FUZZING', 'SIMULATION', 'FRAMEWORK'];
   
-  const filteredTools = TOOLS.filter(tool => {
-    if (selectedCategory === 'ALL') return true;
-    return tool.type === selectedCategory;
-  });
+  const filteredTools = React.useMemo(() => {
+    const tools = getFilteredTools();
+    if (selectedCategory === 'ALL') return tools;
+    return tools.filter(tool => tool.type === selectedCategory);
+  }, [selectedCategory]);
 
   // Récupérer l'outil sélectionné et ses attaques
-  const selectedTool = tabState?.selectedTool ? TOOLS.find(t => t.id === tabState.selectedTool) : undefined;
+  const selectedTool = tabState?.selectedTool ? getFilteredTools().find(t => t.id === tabState.selectedTool) : undefined;
 
   // Fonction de protection contre les clicks trop rapprochés
   const debounceInteraction = useCallback(() => {
@@ -105,9 +106,11 @@ export const ToolSelectionFunnel: React.FC<ToolSelectionFunnelProps> = ({ tabId 
       handleToolSelect(tabId, toolId);
       
       // Vérifier si l'outil a plusieurs attaques
-      const tool = TOOLS.find(t => t.id === toolId);
+      const tool = getFilteredTools().find(t => t.id === toolId);
       if (tool?.attacks && tool.attacks.length > 1) {
         setCurrentStep('attack');
+      } else {
+        setCurrentStep('tool');
       }
       
       // Réinitialiser le flag après un délai plus long

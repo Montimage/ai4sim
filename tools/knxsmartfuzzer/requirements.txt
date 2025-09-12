@@ -1,0 +1,8 @@
+boiboite-opener-framework
+xknx
+scapy
+NetfilterQueue
+pcap-splitter
+pandas
+pyfiglet
+pydantic

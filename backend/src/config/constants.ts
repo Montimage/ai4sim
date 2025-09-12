@@ -7,8 +7,8 @@ export const PORTS = {
 } as const;
 
 export const COMMANDS = {
-    CALDERA: "/home/hamdouni-mohamed/MMT/Dashboard/Fusion/Old_Stable/tools/caldera/start_caldera.sh",
-    MAIP: "/home/hamdouni-mohamed/Montimage/start_maip.sh"
+    CALDERA: "tools/caldera/start_caldera.sh",
+    MAIP: "tools/maip/start_maip_iframe.sh"
 };
 
 export const ERROR_MESSAGES = {

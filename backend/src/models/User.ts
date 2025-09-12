@@ -427,6 +427,12 @@ userSchema.methods.getEffectivePermissions = function(): IPermission[] {
     permissions.push(...systemRole.permissions);
   }
   
+  // Permissions des rôles personnalisés (à implémenter avec populate)
+  if (this.customRoles && this.customRoles.length > 0) {
+    // Note: Pour une implémentation complète, il faudrait populate les customRoles
+    // et ajouter leurs permissions ici
+  }
+  
   // Permissions personnalisées de l'utilisateur
   if (this.permissions) {
     permissions.push(...this.permissions);
