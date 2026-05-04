@@ -1,5 +1,5 @@
 class StorageService {
-    private readonly prefix = "ai4sim_";
+    private readonly prefix = "mmt-pentester_";
 
     set<T>(key: string, value: T): void {
         try {

@@ -1,7 +1,7 @@
 # KNXSmartFuzzer - v1
 
 ## Introduction
-The `KNXSmartFuzzer` is a component of AI4SIM that implements various cyber-attacks against a KNX infrastructure. 
+The `KNXSmartFuzzer` is a component of MMT-Pentester that implements various cyber-attacks against a KNX infrastructure. 
 
 The first version of the `KNXSmartFuzzer` consists of a script that can execute 6 different KNX attacks. The KNX attacks implemented are the following: 1) Fuzzing, 2) Unauthorized access, 3) Net scanning, 4) bus scanning, 5) flooding attack with valid packets, 6) flooding attack with invalid packets. These attacks are executed through the `main.sh` script. More details about these attacks can be found in the appendix of this README.
 

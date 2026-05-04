@@ -47,7 +47,7 @@ const ProjectsView: React.FC = () => {
       <div className="flex-1 p-6">
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Welcome to AI4SIM
+            Welcome to MMT-Pentester
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
             Create your first project to get started with security testing.

@@ -283,8 +283,8 @@ class AIAnalysisService {
         headers: {
           'Authorization': `Bearer ${settings.openrouter.apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://ai4sim-dashboard.local',
-          'X-Title': 'AI4SIM Security Dashboard',
+          'HTTP-Referer': 'https://mmt-pentester.local',
+          'X-Title': 'MMT-Pentester Security Dashboard',
         },
         signal: controller.signal,
         body: JSON.stringify({

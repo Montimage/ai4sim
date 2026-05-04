@@ -145,11 +145,7 @@ export const ReportsView: React.FC = () => {
         r.campaignName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.attacks.some(a => {
           const toolDisplayName = getToolDisplayName(a.tool);
-          const attackDisplayName = getAttackDisplayNameFromParams(
-            a.tool,
-            a.parameters?.attackId,
-            a.parameters
-          );
+          const attackDisplayName = getAttackDisplayNameFromParams(a.tool);
           return toolDisplayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                  attackDisplayName.toLowerCase().includes(searchTerm.toLowerCase());
         }) ||
@@ -375,15 +371,11 @@ export const ReportsView: React.FC = () => {
         <div className="space-y-3">
           {execution.attacks.map((attack, idx) => {
             const toolDisplayName = getToolDisplayName(attack.tool);
-            const attackDisplayName = getAttackDisplayNameFromParams(
-              attack.tool,
-              attack.parameters?.attackId,
-              attack.parameters
-            );
-            
+            const attackDisplayName = getAttackDisplayNameFromParams(attack.tool);
+
             return (
               <div key={idx} className={`rounded-lg p-4 border ${
-                theme === 'light' 
+                theme === 'light'
                   ? 'bg-white border-slate-200' 
                   : 'bg-white/5 border-white/10'
               }`}>
@@ -774,11 +766,7 @@ export const ReportsView: React.FC = () => {
                     {/* Pills d'attaques */}
                     <div className="flex flex-wrap gap-2 mb-3">
                       {report.attacks.slice(0, 3).map((attack, idx) => {
-                        const attackDisplayName = getAttackDisplayNameFromParams(
-                          attack.tool,
-                          attack.parameters?.attackId,
-                          attack.parameters
-                        );
+                        const attackDisplayName = getAttackDisplayNameFromParams(attack.tool);
                         return (
                           <span
                             key={idx}

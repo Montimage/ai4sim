@@ -1,8 +1,8 @@
-# Guide d'Intégration KNX Smart Fuzzer - AI4SIM Dashboard
+# Guide d'Intégration KNX Smart Fuzzer - MMT-Pentester Dashboard
 
 ## Vue d'Ensemble
 
-Le **KNX Smart Fuzzer** est maintenant complètement intégré dans le dashboard AI4SIM, remplaçant l'ancienne implémentation factice par un véritable composant de test de sécurité KNX avec 6 attaques spécialisées.
+Le **KNX Smart Fuzzer** est maintenant complètement intégré dans le dashboard MMT-Pentester, remplaçant l'ancienne implémentation factice par un véritable composant de test de sécurité KNX avec 6 attaques spécialisées.
 
 ## Attaques Disponibles
 
@@ -63,7 +63,7 @@ Le conteneur nécessite des privilèges étendus :
 - `--cap-add=NET_RAW` : Sockets raw
 - `--privileged` : Privilèges administrateur
 
-## Utilisation dans AI4SIM
+## Utilisation dans MMT-Pentester
 
 ### Interface Utilisateur
 1. **Sélection d'Outil**: Choisir "KNX Smart Fuzzer" dans la liste des outils
@@ -193,7 +193,7 @@ export DEBUG=knx:*
 - **Docker Hub**: Images de conteneur
 
 ### Contact
-Pour questions techniques ou problèmes d'intégration, consulter la documentation du projet AI4SIM ou créer une issue dans le repository.
+Pour questions techniques ou problèmes d'intégration, consulter la documentation du projet MMT-Pentester ou créer une issue dans le repository.
 
 ---
 

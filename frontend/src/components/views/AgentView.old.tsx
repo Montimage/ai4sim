@@ -366,8 +366,8 @@ const AgentView: React.FC = () => {
       { toolName: 'nikto', enabled: true, parameters: { port: 80, ssl: false } },
       { toolName: 'gobuster', enabled: true, parameters: { wordlist: '/usr/share/wordlists/dirb/common.txt', extensions: 'php,html,txt', threads: 10 } },
       { toolName: 'sqlmap', enabled: true, parameters: { level: 1, risk: 1 } },
-      { toolName: 'shennina', enabled: true, parameters: { mode: 'scan-only', target: '' } }, // AI4SIM
-      { toolName: 'gan-fuzzer', enabled: true, parameters: { mode: 'web', threads: 10 } } // AI4SIM
+      { toolName: 'shennina', enabled: true, parameters: { mode: 'scan-only', target: '' } }, // MMT-Pentester
+      { toolName: 'gan-fuzzer', enabled: true, parameters: { mode: 'web', threads: 10 } } // MMT-Pentester
     ];
     
     // ✅ Tous les outils sont actifs, maintenant
@@ -1015,8 +1015,8 @@ const AgentView: React.FC = () => {
       nikto: 'Scanner de vulnérabilités web',
       gobuster: 'Bruteforce de répertoires web',
       sqlmap: 'Test d\'intrusion SQL',
-      shennina: 'IA de pentest automatisé (AI4SIM)',
-      'gan-fuzzer': 'Fuzzing IA de vulnérabilités (AI4SIM)'
+      shennina: 'IA de pentest automatisé (MMT-Pentester)',
+      'gan-fuzzer': 'Fuzzing IA de vulnérabilités (MMT-Pentester)'
     };
     return descriptions[tool] || 'Outil de pentesting';
   };
@@ -1136,8 +1136,8 @@ const AgentView: React.FC = () => {
             const enabledTools = adaptedTools.filter(config => config.enabled);
             const toolsList = enabledTools.map(config => {
               const description = getToolDescription(config.toolName);
-              const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
-              return `• ${config.toolName}${isAI4SIM ? ' (AI4SIM)' : ''}: ${description}`;
+              const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+              return `• ${config.toolName}${isMMTPentester ? ' (MMT-Pentester)' : ''}: ${description}`;
             }).join('\n');
             
             // ✅ Message avec boutons intégrés, pas de [CONFIRM_PENTEST:]
@@ -1153,8 +1153,8 @@ ${toolsList}
           } else {
             const defaultTools = pentestConfigs.filter(config => config.enabled).map(config => {
               const description = getToolDescription(config.toolName);
-              const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
-              return `• ${config.toolName}${isAI4SIM ? ' (AI4SIM)' : ''}: ${description}`;
+              const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+              return `• ${config.toolName}${isMMTPentester ? ' (MMT-Pentester)' : ''}: ${description}`;
             }).join('\n');
             
             addMessageToConversation(conversationId, `${data.response}
@@ -1298,11 +1298,11 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
         const reportUrl = URL.createObjectURL(reportBlob);
         const reportLink = document.createElement('a');
         reportLink.href = reportUrl;
-        reportLink.download = `ai4sim-rapport-${currentSession.target}-${new Date().toISOString()}.json`;
+        reportLink.download = `mmt-pentester-rapport-${currentSession.target}-${new Date().toISOString()}.json`;
         reportLink.click();
         URL.revokeObjectURL(reportUrl);
         
-        addChatMessage(`📁 **Rapport téléchargé !** Fichier : \`ai4sim-rapport-${currentSession.target}-${new Date().toISOString()}.json\``, true, 'info');
+        addChatMessage(`📁 **Rapport téléchargé !** Fichier : \`mmt-pentester-rapport-${currentSession.target}-${new Date().toISOString()}.json\``, true, 'info');
       }
     } catch (error) {
       console.error('Error generating report:', error);
@@ -1414,7 +1414,7 @@ Contient toutes les données de la session pour analyse externe.`, true, 'succes
           <CpuChipIcon className="w-8 h-8 text-blue-600" />
             <div>
             <h1 className={`text-2xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
-              AI4SIM Agent
+              MMT-Pentester Agent
               </h1>
               <p className={theme === 'light' ? 'text-slate-600' : 'text-gray-400'}>
               Your AI Assistant for Pentesting
@@ -1526,14 +1526,14 @@ Contient toutes les données de la session pour analyse externe.`, true, 'succes
                     </h4>
                     <div className="text-xs space-y-1">
                       {pentestConfigs.map(config => {
-                        const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+                        const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
                         const isEnabled = config.enabled;
                         
                         return (
                           <div key={config.toolName} className="flex items-center justify-between">
                             <span className={`${theme === 'light' ? 'text-blue-800' : 'text-blue-300'}`}>
                               {config.toolName}
-                              {isAI4SIM && <span className="ml-1 text-xs text-orange-600">(AI4SIM)</span>}
+                              {isMMTPentester && <span className="ml-1 text-xs text-orange-600">(MMT-Pentester)</span>}
                             </span>
                             <span className={`px-2 py-1 rounded text-xs ${
                               isEnabled 
@@ -2042,7 +2042,7 @@ Contient toutes les données de la session pour analyse externe.`, true, 'succes
                             <h3 className={`font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
                               {step.tool.toUpperCase()}
                               {(step.tool === 'shennina' || step.tool === 'gan-fuzzer') && (
-                                <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">AI4SIM</span>
+                                <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">MMT-Pentester</span>
                               )}
                             </h3>
                             <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-gray-400'}`}>

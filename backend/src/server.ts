@@ -42,9 +42,12 @@ let wsManagerPromise = WebSocketManager.initialize(server);
 // Export the WebSocket Manager instance
 export const getWsManager = () => WebSocketManager.getInstance();
 
-// More permissive CORS configuration for development
+// CORS configuration — reads from env, falls back to localhost dev defaults
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: corsOrigins,
   credentials: true
 }));
 app.use(helmet());
@@ -229,6 +232,7 @@ const startServer = async () => {
     const executionRoutes = await import('./routes/executions');
     const projectManagementRoutes = await import('./routes/projectManagement');
     const scenarioRoutes = await import('./routes/scenarios');
+    const pentestReportRoutes = await import('./routes/pentestReports');
     
     // Initialize controllers after WebSocket Manager is ready
     const authController = new AuthController();
@@ -301,6 +305,9 @@ const startServer = async () => {
     
     app.use('/api', scenarioRoutes.default);
     logger.info('✅ Scenario routes mounted successfully');
+    
+    app.use('/api/pentest', pentestReportRoutes.default);
+    logger.info('✅ Pentest Reports routes mounted successfully');
 
     // Public pentest health endpoint - define explicitly before auth middleware
     app.get('/api/pentest/health', async (_req, res) => {
@@ -413,7 +420,7 @@ const startServer = async () => {
       }
     });
 
-    app.post('/api/process-status/batch', async (req, res) => {
+    app.post('/api/process-status/batch', authMiddleware, async (req, res) => {
       try {
         const { processIds } = req.body;
         

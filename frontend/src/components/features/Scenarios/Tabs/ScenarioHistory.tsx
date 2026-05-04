@@ -86,11 +86,7 @@ const ScenarioHistory: React.FC = () => {
         e.scenarioName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         e.attacks.some(a => {
           const toolDisplayName = getToolDisplayName(a.tool);
-          const attackDisplayName = getAttackDisplayNameFromParams(
-            a.tool,
-            a.parameters?.attackId,
-            a.parameters
-          );
+          const attackDisplayName = getAttackDisplayNameFromParams(a.tool);
           return toolDisplayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                  attackDisplayName.toLowerCase().includes(searchTerm.toLowerCase());
         }) ||
@@ -298,11 +294,7 @@ const ScenarioHistory: React.FC = () => {
         <div className="space-y-3">
           {execution.attacks.map((attack, idx) => {
             const toolDisplayName = getToolDisplayName(attack.tool);
-            const attackDisplayName = getAttackDisplayNameFromParams(
-              attack.tool,
-              attack.parameters?.attackId,
-              attack.parameters
-            );
+            const attackDisplayName = getAttackDisplayNameFromParams(attack.tool);
             
             return (
               <div key={idx} className={`rounded-lg p-4 border ${

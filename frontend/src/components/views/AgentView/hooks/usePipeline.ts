@@ -93,11 +93,11 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
         const reportUrl = URL.createObjectURL(reportBlob);
         const reportLink = document.createElement('a');
         reportLink.href = reportUrl;
-        reportLink.download = `ai4sim-rapport-${currentSession.target}-${new Date().toISOString()}.json`;
+        reportLink.download = `mmt-pentester-rapport-${currentSession.target}-${new Date().toISOString()}.json`;
         reportLink.click();
         URL.revokeObjectURL(reportUrl);
         
-        console.log(`📁 **Rapport téléchargé !** Fichier : \`ai4sim-rapport-${currentSession.target}-${new Date().toISOString()}.json\``);
+        console.log(`📁 **Rapport téléchargé !** Fichier : \`mmt-pentester-rapport-${currentSession.target}-${new Date().toISOString()}.json\``);
       } else {
         console.error('❌ Report generation failed:', data);
         console.log(`❌ **Erreur lors de la génération du rapport**: ${data.error || 'Erreur inconnue'}`);

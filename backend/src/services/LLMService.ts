@@ -402,8 +402,8 @@ export class LLMService {
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://ai4sim-dashboard.local',
-            'X-Title': 'AI4SIM Dashboard'
+            'HTTP-Referer': 'https://mmt-pentester-dashboard.local',
+            'X-Title': 'MMT-Pentester Dashboard'
           },
           timeout: 300000 // 5 minutes pour les rapports complexes
         }

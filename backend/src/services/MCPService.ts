@@ -21,7 +21,7 @@ export class MCPService {
       const response = await axios.get(`${this.searchEngines.cve}cve/${cveId}`, {
         timeout: 10000,
         headers: {
-          'User-Agent': 'AI4SIM-Dashboard/1.0'
+          'User-Agent': 'MMT-Pentester-Dashboard/1.0'
         }
       });
 

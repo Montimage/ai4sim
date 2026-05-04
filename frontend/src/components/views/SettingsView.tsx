@@ -6,7 +6,6 @@ import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useAISettingsStore, AIProvider, OllamaModel } from '../../store/aiSettingsStore';
 import { useAttackStore } from '../../store/attackStore';
-import { securitySettingsService } from '../../services/securitySettingsService';
 import { authService } from '../../services/api';
 import { Card } from '../shared/UI/Card';
 import { Button } from '../shared/UI/Button';
@@ -59,9 +58,6 @@ const SettingsView: React.FC = () => {
     fetchOllamaModels
   } = useAISettingsStore();
 
-  // Security settings state
-  const [securitySettings, setSecuritySettings] = useState(securitySettingsService.getSettings());
-  
   // User settings state
   const [userSettings, setUserSettings] = useState({
     notifications: true,
@@ -130,19 +126,6 @@ const SettingsView: React.FC = () => {
       message: `Theme changed to ${newTheme}`,
       type: 'success',
       category: 'system'
-    });
-  };
-
-  const handleSecuritySettingChange = (setting: keyof typeof securitySettings, value: boolean) => {
-    const newSettings = { ...securitySettings, [setting]: value };
-    setSecuritySettings(newSettings);
-    securitySettingsService.updateSetting(setting, value);
-    
-    addNotification({
-      title: 'Security Settings Updated',
-      message: `${setting} has been ${value ? 'enabled' : 'disabled'}`,
-      type: 'success',
-      category: 'security'
     });
   };
 

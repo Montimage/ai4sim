@@ -1,4 +1,4 @@
-# 🛡️ AI4SIM Dashboard
+# 🛡️ MMT-Pentester Dashboard
 ## Security Testing and Attack Simulation Management Platform
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
@@ -7,7 +7,7 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-5.0+-green.svg)](https://www.mongodb.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**AI4SIM Dashboard** is a comprehensive web platform designed for managing and executing cybersecurity tests and attack simulations. This full-stack solution combines an intuitive user interface with a robust backend to orchestrate automated penetration testing campaigns.
+**MMT-Pentester Dashboard** is a comprehensive web platform designed for managing and executing cybersecurity tests and attack simulations. This full-stack solution combines an intuitive user interface with a robust backend to orchestrate automated penetration testing campaigns.
 
 ⚠️ **Important Note: For Educational and Research Purposes**
 
@@ -59,8 +59,8 @@ This project is designed **solely for educational and research purposes**. It's 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Montimage/ai4sim.git
-cd ai4sim
+git clone https://github.com/Montimage/mmt-pentester.git
+cd mmt-pentester
 ```
 
 ### 2. Install Dependencies
@@ -198,7 +198,7 @@ The REST API is available at `http://localhost:3000/api`
 
 ## 🔌 Tool Integration
 
-AI4SIM Dashboard supports integration with various security tools:
+MMT-Pentester Dashboard supports integration with various security tools:
 
 ### Currently Supported Tools
 - **Caldera**: Adversary simulation framework
@@ -210,7 +210,7 @@ AI4SIM Dashboard supports integration with various security tools:
 ## 🏗️ Project Structure
 
 ```
-ai4sim/
+mmt-pentester/
 ├── frontend/              # React Interface
 ├── backend/               # Node.js API
 ├── tools/                 # Integrated tools
@@ -263,7 +263,7 @@ Logs are available in:
 
 ```bash
 # Build Docker image
-docker build -t ai4sim-dashboard .
+docker build -t mmt-pentester-dashboard .
 
 # Run with Docker Compose
 docker-compose up -d
@@ -275,7 +275,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 👥 Development Team
 
-**AI4SIM Dashboard** is developed by Montimage as part of the AI4SIM project, focusing on advanced cybersecurity simulation and testing capabilities.
+**MMT-Pentester Dashboard** is developed by Montimage as part of the MMT-Pentester project, focusing on advanced cybersecurity simulation and testing capabilities.
 
 **Lead Developer**: Mohamed Hamdouni  
 **Organization**: [Montimage](https://github.com/Montimage)  
@@ -288,7 +288,7 @@ For more technical details and context, see the attached internship report.
 
 ## 📞 Support & Information
 
-For technical information and updates, visit the [Montimage AI4SIM repository](https://github.com/Montimage/ai4sim).
+For technical information and updates, visit the [Montimage MMT-Pentester repository](https://github.com/Montimage/mmt-pentester).
 
 ---
 

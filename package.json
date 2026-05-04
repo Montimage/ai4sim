@@ -1,5 +1,5 @@
 {
-  "name": "ai4sim-dashboard",
+  "name": "mmt-pentester-dashboard",
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
@@ -17,6 +17,7 @@
     "axios": "^1.10.0",
     "chalk": "^4.1.2",
     "dotenv": "^17.2.0",
+    "exceljs": "^4.4.0",
     "node-fetch": "^2.7.0",
     "puppeteer": "^24.15.0",
     "ws": "^8.18.2"

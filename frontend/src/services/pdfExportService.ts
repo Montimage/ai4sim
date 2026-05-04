@@ -93,11 +93,7 @@ class PDFExportService {
       addSection('Attacks');
       execution.attacks.forEach((attack, index) => {
         const toolDisplayName = getToolDisplayName(attack.tool);
-        const attackDisplayName = getAttackDisplayNameFromParams(
-          attack.tool,
-          attack.parameters?.attackId,
-          attack.parameters
-        );
+        const attackDisplayName = getAttackDisplayNameFromParams(attack.tool);
         
         addText(`${index + 1}. ${attackDisplayName}`, margin + 5, 12, 'bold');
         addText(`   Tool: ${toolDisplayName}`, margin + 5);
@@ -196,7 +192,7 @@ class PDFExportService {
       // Footer
       yPosition = pageHeight - 15;
       doc.setFontSize(8);
-      doc.text(`Generated on ${new Date().toLocaleString()} by AI4SIM Dashboard`, margin, yPosition);
+      doc.text(`Generated on ${new Date().toLocaleString()} by MMT-Pentester Dashboard`, margin, yPosition);
 
       // Save the PDF
       const fileName = `execution-report-${execution.scenarioName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -285,11 +281,7 @@ class PDFExportService {
         addText('Attacks:', margin + 5, 12, 'bold');
         execution.attacks.forEach((attack, attackIndex) => {
           const toolDisplayName = getToolDisplayName(attack.tool);
-          const attackDisplayName = getAttackDisplayNameFromParams(
-            attack.tool,
-            attack.parameters?.attackId,
-            attack.parameters
-          );
+          const attackDisplayName = getAttackDisplayNameFromParams(attack.tool);
           
           addText(`${attackIndex + 1}. ${attackDisplayName} (${toolDisplayName}) - ${this.translateStatus(attack.status)}`, margin + 10, 10);
         });

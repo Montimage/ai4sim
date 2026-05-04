@@ -23,7 +23,7 @@ const AgentReport: React.FC = () => {
     
     const report = currentSession.finalReport;
     const reportText = `
-RAPPORT DE SÉCURITÉ AI4SIM
+RAPPORT DE SÉCURITÉ MMT-Pentester
 ==========================
 
 Session: ${currentSession.id}
@@ -45,14 +45,14 @@ ${index + 1}. ${item.vulnerability}
    Fix: ${item.fix}
 `).join('\n')}
 
-Généré le ${currentSession.updatedAt.toLocaleString()} par AI4SIM Agent
+Généré le ${currentSession.updatedAt.toLocaleString()} par MMT-Pentester Agent
     `;
     
     const blob = new Blob([reportText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ai4sim-rapport-${currentSession.targetIp}-${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = `mmt-pentester-rapport-${currentSession.targetIp}-${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -62,11 +62,11 @@ Généré le ${currentSession.updatedAt.toLocaleString()} par AI4SIM Agent
   const shareReport = () => {
     if (!currentSession?.finalReport) return;
     
-    const summary = `Rapport de sécurité AI4SIM pour ${currentSession.targetIp}: ${currentSession.finalReport.remediationPlan.length} vulnérabilité(s) détectée(s)`;
+    const summary = `Rapport de sécurité MMT-Pentester pour ${currentSession.targetIp}: ${currentSession.finalReport.remediationPlan.length} vulnérabilité(s) détectée(s)`;
     
     if (navigator.share) {
       navigator.share({
-        title: 'Rapport AI4SIM',
+        title: 'Rapport MMT-Pentester',
         text: summary,
         url: window.location.href
       });
@@ -338,7 +338,7 @@ Généré le ${currentSession.updatedAt.toLocaleString()} par AI4SIM Agent
         <p className={`text-sm ${
           theme === 'light' ? 'text-slate-600' : 'text-gray-400'
         }`}>
-          Rapport généré le {currentSession.updatedAt.toLocaleString()} par AI4SIM Agent
+          Rapport généré le {currentSession.updatedAt.toLocaleString()} par MMT-Pentester Agent
         </p>
       </div>
     </div>

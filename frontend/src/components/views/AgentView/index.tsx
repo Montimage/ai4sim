@@ -129,7 +129,7 @@ const AgentView: React.FC = () => {
           <div className="flex items-center space-x-4">
             <div className="text-center">
               <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                AI4SIM Agent
+                MMT-Pentester Agent
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Your AI Assistant for Pentesting

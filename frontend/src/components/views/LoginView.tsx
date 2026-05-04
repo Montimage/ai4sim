@@ -20,7 +20,7 @@ export const LoginView: React.FC = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    role: 'user' as 'user' | 'admin' | 'super_admin' // Seulement les rôles système
+    inviteCode: ''
   });
   const [registerError, setRegisterError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -96,7 +96,7 @@ export const LoginView: React.FC = () => {
           password: registerForm.password,
           firstName: registerForm.firstName.trim(),
           lastName: registerForm.lastName.trim(),
-          role: registerForm.role
+          inviteCode: registerForm.inviteCode
         })
       });
       
@@ -116,12 +116,12 @@ export const LoginView: React.FC = () => {
       
       // Reset form and switch to login
       setRegisterForm({
+        inviteCode: '',
         username: '',
         password: '',
         confirmPassword: '',
         firstName: '',
-        lastName: '',
-        role: 'user'
+        lastName: ''
       });
       setActiveTab('login');
       
@@ -155,7 +155,7 @@ export const LoginView: React.FC = () => {
           <h2 className={`text-center text-3xl font-extrabold ${
             theme === 'light' ? 'text-gray-900' : 'text-white'
           }`}>
-            AI4SIM Dashboard
+            MMT-Pentester Dashboard
           </h2>
           <p className={`text-center text-sm mt-2 ${
             theme === 'light' ? 'text-gray-600' : 'text-gray-400'
@@ -336,21 +336,20 @@ export const LoginView: React.FC = () => {
               </div>
               
               <div>
-                <select
-                  value={registerForm.role}
-                  onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value as any })}
-                  className={`appearance-none relative block w-full px-3 py-2 border 
+                <input
+                  type="text"
+                  required
+                  className={`appearance-none relative block w-full px-3 py-2 border
                     border-gray-300 placeholder-gray-500 text-gray-900 rounded-md
                     focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm ${
-                    theme === 'light' 
-                      ? 'bg-white text-gray-900' 
+                    theme === 'light'
+                      ? 'bg-white text-gray-900'
                       : 'bg-gray-700 text-white border-gray-600'
                   }`}
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
+                  placeholder="Invite Code"
+                  value={registerForm.inviteCode}
+                  onChange={(e) => setRegisterForm({ ...registerForm, inviteCode: e.target.value })}
+                />
               </div>
             </div>
 

@@ -23,8 +23,17 @@ export class AuthController {
 
   async register(req: Request, res: Response): Promise<Response> {
     try {
-      const { username, password, firstName, lastName, role = 'user' } = req.body;
-      
+      const { username, password, firstName, lastName, inviteCode } = req.body;
+
+      // Validate invite code
+      const requiredCode = process.env.REGISTER_INVITE_CODE;
+      if (!requiredCode) {
+        return res.status(403).json({ message: 'Registration is disabled' });
+      }
+      if (!inviteCode || inviteCode !== requiredCode) {
+        return res.status(403).json({ message: 'Invalid invite code' });
+      }
+
       if (!username || !password) {
         return res.status(400).json({ message: 'Username and password are required' });
       }
@@ -39,11 +48,8 @@ export class AuthController {
         return res.status(400).json({ message: 'Username must be at least 3 characters long' });
       }
 
-      // Validation du rôle
-      const validSystemRoles = ['user', 'admin', 'super_admin']; // Seulement les rôles système
-      if (!validSystemRoles.includes(role)) {
-        return res.status(400).json({ message: 'Invalid system role specified' });
-      }
+      // Role is always 'user' for self-registration — cannot be elevated via API
+      const role = 'user';
 
       const existingUser = await User.findOne({ username });
       if (existingUser) {

@@ -99,7 +99,7 @@ async function testUserManagement() {
 // Exécuter le script si appelé directement
 if (require.main === module) {
   // Connecter à MongoDB
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/ai4sim';
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/mmt-pentester';
   
   mongoose.connect(mongoUri)
     .then(() => {

@@ -7,8 +7,8 @@ export const getBasePentestConfigs = (): PentestConfig[] => [
   { toolName: 'nikto', enabled: true, parameters: { port: 80, ssl: false } },
   { toolName: 'gobuster', enabled: true, parameters: { wordlist: '/usr/share/wordlists/dirb/common.txt', extensions: 'php,html,txt', threads: 10 } },
   { toolName: 'sqlmap', enabled: true, parameters: { level: 1, risk: 1 } },
-  { toolName: 'shennina', enabled: true, parameters: { mode: 'scan-only', target: '' } }, // AI4SIM
-  { toolName: 'gan-fuzzer', enabled: true, parameters: { mode: 'web', threads: 10 } } // AI4SIM
+  { toolName: 'shennina', enabled: true, parameters: { mode: 'scan-only', target: '' } }, // MMT-Pentester
+  { toolName: 'gan-fuzzer', enabled: true, parameters: { mode: 'web', threads: 10 } } // MMT-Pentester
 ];
 
 // Fonction pour adapter les outils selon le type de cible
@@ -64,8 +64,8 @@ export const getToolDescription = (tool: string): string => {
     nikto: 'Scanner de vulnérabilités web',
     gobuster: 'Bruteforce de répertoires web',
     sqlmap: 'Test d\'intrusion SQL',
-    shennina: 'IA de pentest automatisé (AI4SIM)',
-    'gan-fuzzer': 'Fuzzing IA de vulnérabilités (AI4SIM)'
+    shennina: 'IA de pentest automatisé (MMT-Pentester)',
+    'gan-fuzzer': 'Fuzzing IA de vulnérabilités (MMT-Pentester)'
   };
   return descriptions[tool] || 'Outil de pentesting';
 };

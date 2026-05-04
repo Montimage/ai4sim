@@ -210,7 +210,7 @@ const CombinedView: React.FC<CombinedViewProps> = ({
           >
             <CpuChipIcon className="w-16 h-16 mx-auto mb-4 text-blue-500" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Vue Combinée AI4SIM
+              Vue Combinée MMT-Pentester
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               Sélectionnez une conversation pour voir le chat et le pipeline simultanément

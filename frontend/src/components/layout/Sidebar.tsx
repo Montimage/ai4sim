@@ -113,7 +113,7 @@ export const Sidebar: React.FC = () => {
             <div className="flex items-center">
               <img 
                 src="/test.png" 
-                alt="AI4SIM" 
+                alt="MMT-Pentester" 
                 className="h-8 w-auto"
               />
             </div>

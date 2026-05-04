@@ -122,8 +122,8 @@ export const useChat = (conversationHooks: any, _sessionHooks: any) => {
             const enabledTools = adaptedTools.filter(config => config.enabled);
             const toolsList = enabledTools.map(config => {
               const description = getToolDescription(config.toolName);
-              const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
-              return `• ${config.toolName}${isAI4SIM ? ' (AI4SIM)' : ''}: ${description}`;
+              const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+              return `• ${config.toolName}${isMMTPentester ? ' (MMT-Pentester)' : ''}: ${description}`;
             }).join('\n');
             
             // ✅ Message avec boutons intégrés, pas de [CONFIRM_PENTEST:]
@@ -139,8 +139,8 @@ ${toolsList}
           } else {
             const defaultTools = pentestConfigs.filter(config => config.enabled).map(config => {
               const description = getToolDescription(config.toolName);
-              const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
-              return `• ${config.toolName}${isAI4SIM ? ' (AI4SIM)' : ''}: ${description}`;
+              const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+              return `• ${config.toolName}${isMMTPentester ? ' (MMT-Pentester)' : ''}: ${description}`;
             }).join('\n');
             
             addMessageToConversation(conversationId, `${data.response}

@@ -89,7 +89,7 @@ export class PDFService {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
     
-    const filename = `ai4sim-rapport-securite-${report.target}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const filename = `mmt-pentester-rapport-securite-${report.target}-${new Date().toISOString().split('T')[0]}.pdf`;
     const filepath = path.join(reportsDir, filename);
     
     await page.pdf({
@@ -167,7 +167,7 @@ export class PDFService {
       </head>
       <body>
         <div class="header">
-          <h1>🔒 Rapport de Sécurité AI4SIM</h1>
+          <h1>🔒 Rapport de Sécurité MMT-Pentester</h1>
           <h2>Cible: ${report.target}</h2>
           <p>Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
         </div>
@@ -239,7 +239,7 @@ export class PDFService {
         </div>
 
         <footer style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid #e5e7eb; color: #6b7280;">
-          <p>Rapport généré automatiquement par AI4SIM Agent Pro</p>
+          <p>Rapport généré automatiquement par MMT-Pentester Agent Pro</p>
           <p>Enrichi par recherche internet pour les solutions les plus récentes</p>
         </footer>
       </body>

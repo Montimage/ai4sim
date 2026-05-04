@@ -130,7 +130,7 @@ export const TOOLS: Tool[] = [
   {
     id: "knx-smart-fuzzer",
     name: "KNX Smart Fuzzer",
-    description: "AI4SIM component implementing various cyber-attacks against KNX infrastructure",
+    description: "MMT-Pentester component implementing various cyber-attacks against KNX infrastructure",
     type: "FUZZING",
     status: "implemented",
     attacks: [

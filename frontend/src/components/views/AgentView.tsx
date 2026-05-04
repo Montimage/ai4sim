@@ -871,8 +871,8 @@ const AgentView: React.FC = () => {
       { toolName: 'nikto', enabled: true, parameters: { port: 80, ssl: false } },
       { toolName: 'gobuster', enabled: true, parameters: { wordlist: '/usr/share/wordlists/dirb/common.txt', extensions: 'php,html,txt', threads: 10 } },
       { toolName: 'sqlmap', enabled: true, parameters: { level: 1, risk: 1 } },
-      { toolName: 'shennina', enabled: true, parameters: { mode: 'scan-only', target: '' } }, // AI4SIM
-      { toolName: 'gan-fuzzer', enabled: true, parameters: { mode: 'web', threads: 10 } } // AI4SIM
+      { toolName: 'shennina', enabled: true, parameters: { mode: 'scan-only', target: '' } }, // MMT-Pentester
+      { toolName: 'gan-fuzzer', enabled: true, parameters: { mode: 'web', threads: 10 } } // MMT-Pentester
     ];
     
     // ✅ Tous les outils sont actifs, maintenant
@@ -1746,8 +1746,8 @@ const AgentView: React.FC = () => {
       nikto: 'Web vulnerability scanner',
       gobuster: 'Web directory brute forcing',
       sqlmap: 'SQL injection testing',
-      shennina: 'AI automated pentesting (AI4SIM)',
-      'gan-fuzzer': 'AI vulnerability fuzzing (AI4SIM)'
+      shennina: 'AI automated pentesting (MMT-Pentester)',
+      'gan-fuzzer': 'AI vulnerability fuzzing (MMT-Pentester)'
     };
     return descriptions[tool] || 'Pentesting tool';
   };
@@ -1920,15 +1920,15 @@ const AgentView: React.FC = () => {
             
             const toolsList = enabledTools.map(config => {
               const description = getToolDescription(config.toolName);
-              const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
-              return `• ${config.toolName}${isAI4SIM ? ' (AI4SIM)' : ''}: ${description}`;
+              const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+              return `• ${config.toolName}${isMMTPentester ? ' (MMT-Pentester)' : ''}: ${description}`;
             }).join('\n');
 
             // ✅ List of disabled tools with reasons
             const disabledToolsList = disabledTools.length > 0 ? disabledTools.map(config => {
               const reason = config.parameters.analysisResult || 'Not suitable for this target';
-              const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
-              return `• ${config.toolName}${isAI4SIM ? ' (AI4SIM)' : ''}: ${reason}`;
+              const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+              return `• ${config.toolName}${isMMTPentester ? ' (MMT-Pentester)' : ''}: ${reason}`;
             }).join('\n') : '';
             
             // ✅ Message with intelligent analysis and disabled tools - FULLY ENGLISH
@@ -1956,8 +1956,8 @@ Click the button below to start the automated security assessment.`, true, 'pent
           } else {
             const defaultTools = pentestConfigs.filter(config => config.enabled).map(config => {
               const description = getToolDescription(config.toolName);
-              const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
-              return `• ${config.toolName}${isAI4SIM ? ' (AI4SIM)' : ''}: ${description}`;
+              const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+              return `• ${config.toolName}${isMMTPentester ? ' (MMT-Pentester)' : ''}: ${description}`;
             }).join('\n');
             
             addMessageToConversation(conversationId, `🔍 **Penetration Testing Tools Available**
@@ -2137,11 +2137,11 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyze 
         const reportUrl = URL.createObjectURL(reportBlob);
         const reportLink = document.createElement('a');
         reportLink.href = reportUrl;
-        reportLink.download = `ai4sim-rapport-${currentSession.target}-${new Date().toISOString()}.json`;
+        reportLink.download = `mmt-pentester-rapport-${currentSession.target}-${new Date().toISOString()}.json`;
         reportLink.click();
         URL.revokeObjectURL(reportUrl);
         
-        addChatMessage(`📁 **Report downloaded!** File: \`ai4sim-report-${currentSession.target}-${new Date().toISOString()}.json\``, true, 'info');
+        addChatMessage(`📁 **Report downloaded!** File: \`mmt-pentester-report-${currentSession.target}-${new Date().toISOString()}.json\``, true, 'info');
       }
     } catch (error) {
       console.error('Error generating report:', error);
@@ -2449,7 +2449,7 @@ Contains all session data for external analysis.`, true, 'success');
           <CpuChipIcon className="w-8 h-8 text-blue-600" />
             <div>
             <h1 className={`text-2xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
-              AI4SIM Agent
+              MMT-Pentester Agent
               </h1>
               <p className={theme === 'light' ? 'text-slate-600' : 'text-gray-400'}>
               Your AI Assistant for Pentesting
@@ -2561,14 +2561,14 @@ Contains all session data for external analysis.`, true, 'success');
                     </h4>
                     <div className="text-xs space-y-1">
                       {pentestConfigs.map(config => {
-                        const isAI4SIM = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
+                        const isMMTPentester = config.toolName === 'shennina' || config.toolName === 'gan-fuzzer';
                         const isEnabled = config.enabled;
                         
                         return (
                           <div key={config.toolName} className="flex items-center justify-between">
                             <span className={`${theme === 'light' ? 'text-blue-800' : 'text-blue-300'}`}>
                               {config.toolName}
-                              {isAI4SIM && <span className="ml-1 text-xs text-orange-600">(AI4SIM)</span>}
+                              {isMMTPentester && <span className="ml-1 text-xs text-orange-600">(MMT-Pentester)</span>}
                             </span>
                             <span className={`px-2 py-1 rounded text-xs ${
                               isEnabled 
@@ -3092,7 +3092,7 @@ Contains all session data for external analysis.`, true, 'success');
                             <h3 className={`font-semibold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
                               {step.tool.toUpperCase()}
                               {(step.tool === 'shennina' || step.tool === 'gan-fuzzer') && (
-                                <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">AI4SIM</span>
+                                <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">MMT-Pentester</span>
                               )}
                             </h3>
                             <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-gray-400'}`}>

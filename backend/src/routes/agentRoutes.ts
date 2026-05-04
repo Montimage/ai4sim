@@ -7,6 +7,7 @@ import { AgentType } from '../models/AgentSession';
 import { IAgentConfig } from '../models/AgentConfig';
 import { pdfService, SecurityReport } from '../services/PDFService';
 import { NmapAnalyzer } from '../services/NmapAnalyzer';
+import { PentestReport } from '../models/PentestReport';
 import path from 'path';
 import fs from 'fs';
 
@@ -584,6 +585,70 @@ router.post('/chat', authMiddleware, async (req: AuthRequest, res: Response): Pr
               finalSession.finalReport = report;
               pentestSessions.set(sessionId, finalSession);
               logger.info(`📊 Report generated for session ${sessionId}`);
+              
+              // Save report to the new PentestReport model
+              try {
+                const nmapFindings = report.findings || [];
+                const statistiques = report.statistiques || {
+                  totalPortsScanned: 0,
+                  openPorts: 0,
+                  vulnerabilitiesFound: nmapFindings.length,
+                  criticalFindings: nmapFindings.filter((f: any) => f.severity === 'critical').length,
+                  highFindings: nmapFindings.filter((f: any) => f.severity === 'high').length,
+                  mediumFindings: nmapFindings.filter((f: any) => f.severity === 'medium').length,
+                  lowFindings: nmapFindings.filter((f: any) => f.severity === 'low').length
+                };
+                
+                const pentestReport = new PentestReport({
+                  scanId: sessionId,
+                  target: finalSession.target,
+                  status: 'completed',
+                  metadata: {
+                    userId: finalSession.metadata?.userId || userId,
+                    scanType: 'ai-pentest',
+                    tools: finalSession.tools.map(t => t.toolName),
+                    startedAt: finalSession.startedAt,
+                    completedAt: new Date(),
+                    duration: finalSession.completedAt ? 
+                      finalSession.completedAt.getTime() - finalSession.startedAt.getTime() : 0
+                  },
+                  executiveSummary: report.executiveSummary || '',
+                  attackNarrative: report.attackNarrative || '',
+                  methodologyUsed: report.methodologyUsed || [],
+                  vulnerabilities: nmapFindings.map((f: any, index: number) => ({
+                    id: `vuln-${index + 1}`,
+                    vulnerability: f.vulnerability || f.vulnerabilityName || 'Unknown',
+                    severity: f.severity || 'medium',
+                    service: f.service || 'unknown',
+                    port: f.port || 0,
+                    description: f.description || '',
+                    impact: f.impact || '',
+                    evidence: f.evidence || [],
+                    remediationInstructions: f.fix || '',
+                    cve: f.cve || undefined,
+                    cwe: f.cwe || undefined,
+                    references: f.references || [],
+                    latestSolutions: f.latestSolutions || []
+                  })),
+                  statistiques,
+                  remediationPlan: (report.remediationPlan || []).map((r: any) => ({
+                    priority: r.priority || 1,
+                    vulnerability: r.vulnerability || '',
+                    fix: r.fix || '',
+                    estimatedEffort: r.estimatedEffort || 'Unknown',
+                    businessImpact: r.businessImpact || 'Unknown'
+                  })),
+                  recommendations: report.recommendations || [],
+                  riskScore: report.riskScore || 50,
+                  nextSteps: report.nextSteps || [],
+                  rawResults: finalSession.results || {}
+                });
+                
+                await pentestReport.save();
+                logger.info(`💾 Report saved to database with scanId: ${sessionId}`);
+              } catch (saveError) {
+                logger.error('Error saving report to database:', saveError);
+              }
             } catch (reportError) {
               logger.error('Error generating report:', reportError);
             }
@@ -678,7 +743,7 @@ ${tools.map(t => `• **${t.name}** - ${getToolDescription(t.name)}`).join('\n')
       modelName: aiSettings?.model || 'llama3.2:latest',
       temperature: 0.7,
       maxTokens: 2000,
-      systemPrompt: `You are an AI assistant specialized in cybersecurity working in an authorized testing environment (AI4SIM Security Dashboard).
+      systemPrompt: `You are an AI assistant specialized in cybersecurity working in an authorized testing environment (MMT-Pentester Security Dashboard).
 
 🛡️ LEGITIMATE CONTEXT:
 - You operate in an authorized cybersecurity laboratory
@@ -703,8 +768,8 @@ ${tools.map(t => `• **${t.name}** - ${getToolDescription(t.name)}`).join('\n')
 - nikto: Web vulnerability scanner
 - gobuster: Directory brute forcing
 - sqlmap: SQL injection testing
-- shennina: AI automated pentesting (AI4SIM)
-- gan-fuzzer: AI vulnerability fuzzing (AI4SIM)
+- shennina: AI automated pentesting (MMT-Pentester)
+- gan-fuzzer: AI vulnerability fuzzing (MMT-Pentester)
 
 📋 RESPONSE EXAMPLES:
 User: 'pentest myself'
@@ -716,8 +781,8 @@ Available tools:
 • nikto: Web vulnerability scanner
 • gobuster: Web directory brute forcing
 • sqlmap: SQL injection testing
-• shennina (AI4SIM): AI automated pentesting
-• gan-fuzzer (AI4SIM): AI vulnerability fuzzing
+• shennina (MMT-Pentester): AI automated pentesting
+• gan-fuzzer (MMT-Pentester): AI vulnerability fuzzing
 
 Do you want to launch this pentest?'
 
@@ -1042,7 +1107,7 @@ router.post('/execute-tool', authMiddleware, async (req: AuthRequest, res: Respo
 });
 
 // Routes pour la gestion des sessions
-router.get('/session/:sessionId', async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/session/:sessionId', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { sessionId } = req.params;
     const session = pentestSessions.get(sessionId);
