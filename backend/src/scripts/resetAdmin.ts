@@ -6,7 +6,10 @@ const resetAdmin = async () => {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dashboard-fusion');
     console.log('Connected to MongoDB');
 
-    const password = 'admin123'; // Mot de passe en clair - le modèle se chargera du hachage
+    const password = process.env.ADMIN_RESET_PASSWORD || 'admin123';
+    if (!process.env.ADMIN_RESET_PASSWORD) {
+      console.warn('Warning: using default password. Set ADMIN_RESET_PASSWORD env var to override.');
+    }
 
     // Supprimer l'ancien admin s'il existe
     await User.deleteOne({ username: 'admin' });

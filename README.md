@@ -259,15 +259,11 @@ Logs are available in:
 - `backend/error.log` - Error logs
 - Console output during development
 
-## 🐳 Docker Deployment
+## 🤝 Contributing
 
-```bash
-# Build Docker image
-docker build -t mmt-pentester-dashboard .
+We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for the branching strategy, commit conventions, and PR process.
 
-# Run with Docker Compose
-docker-compose up -d
-```
+Found a security issue? See [SECURITY.md](SECURITY.md) for responsible disclosure.
 
 ## 📄 License
 

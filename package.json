@@ -1,6 +1,21 @@
 {
   "name": "mmt-pentester-dashboard",
   "version": "1.0.0",
+  "description": "Full-stack web platform for managing and executing cybersecurity tests and attack simulations",
+  "author": "Montimage <contact@montimage.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Montimage/ai4sim.git"
+  },
+  "keywords": [
+    "cybersecurity",
+    "penetration-testing",
+    "attack-simulation",
+    "security-testing",
+    "caldera",
+    "montimage"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
