@@ -242,14 +242,11 @@ const ScenarioManager: React.FC = () => {
         campaignId: campaignId
       };
       
-      console.log('Scenario data sent to server:', JSON.stringify(scenarioData, null, 2));
-      
       // Show creation attempt message
       toast.info('Attempting to create scenario...');
-      
+
       try {
-        const result = await createScenario(projectId, scenarioData);
-        console.log('Server response:', result);
+        await createScenario(projectId, scenarioData);
         toast.success('Scenario created successfully');
         
         // Reload project and navigate to campaign page

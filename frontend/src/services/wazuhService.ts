@@ -94,11 +94,6 @@ class WazuhService {
       retryDelay: 2000
     };
 
-    console.log('Wazuh Service initialized with config:', {
-      baseUrl: this.config.baseUrl,
-      username: this.config.username,
-      timeout: this.config.timeout
-    });
   }
 
   // Load configuration from localStorage
@@ -133,11 +128,6 @@ class WazuhService {
     this.config = { ...this.config, ...newConfig };
     this.resetConnection();
     this.saveConfigToStorage();
-    console.log('Wazuh configuration updated:', {
-      baseUrl: this.config.baseUrl,
-      username: this.config.username,
-      timeout: this.config.timeout
-    });
   }
 
   // Reset connection state
@@ -160,7 +150,6 @@ class WazuhService {
   // Test connection with detailed feedback
   async testConnection(): Promise<{ success: boolean; message: string; details?: any }> {
     this.connectionStatus = 'testing';
-    console.log('Testing Wazuh connection...');
 
     try {
       const controller = new AbortController();
@@ -267,8 +256,6 @@ class WazuhService {
 
     for (let attempt = 1; attempt <= this.config.retryAttempts; attempt++) {
       try {
-        console.log(`Wazuh authentication attempt ${attempt}/${this.config.retryAttempts}`);
-
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
@@ -303,14 +290,12 @@ class WazuhService {
         this.connectionStatus = 'connected';
         this.retryCount = 0;
 
-        console.log('Wazuh authentication successful');
         return this.authToken;
 
       } catch (error) {
         console.error(`Wazuh authentication attempt ${attempt} failed:`, error);
         
         if (attempt < this.config.retryAttempts) {
-          console.log(`Retrying in ${this.config.retryDelay}ms...`);
           await new Promise(resolve => setTimeout(resolve, this.config.retryDelay));
         }
       }
@@ -324,8 +309,6 @@ class WazuhService {
   // Get alerts for a specific time range
   async getAlertsForExecution(execution: ExecutionRecord): Promise<WazuhAlert[]> {
     try {
-      console.log('Fetching Wazuh alerts for execution:', execution.id);
-      
       const token = await this.authenticate();
       if (!token) {
         console.warn('Cannot fetch alerts: authentication failed');
@@ -354,8 +337,7 @@ class WazuhService {
 
       const data = await response.json();
       const alerts = data.data?.affected_items || [];
-      
-      console.log(`Fetched ${alerts.length} alerts from Wazuh for execution ${execution.id}`);
+
       return alerts;
       
     } catch (error) {
@@ -402,9 +384,6 @@ class WazuhService {
       const highAlerts = alerts.filter(alert => alert.rule.level >= 8 && alert.rule.level < 12).length;
       const mediumAlerts = alerts.filter(alert => alert.rule.level >= 5 && alert.rule.level < 8).length;
       const lowAlerts = alerts.filter(alert => alert.rule.level < 5).length;
-
-      const processingTime = Date.now() - startTime;
-      console.log(`Processed ${totalAlerts} Wazuh alerts in ${processingTime}ms`);
 
       return {
         totalAlerts,

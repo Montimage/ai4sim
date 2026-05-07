@@ -190,15 +190,6 @@ export const useScenarioTerminal = (scenarioId: string) => {
     const lines = content.split('\n');
     lines.forEach((line) => {
       if (line.trim() === '') return;
-      // Add detailed tracing for output generation
-      console.log(`📝 [ScenarioTerminal-OUTPUT] Adding output:`, {
-        content: line.substring(0, 100),
-        type,
-        attackId,
-        scenarioId,
-        instance: instanceId.current,
-        stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
-      });
       // Ajouter chaque ligne à la file d'attente
       messageQueueRef.current.push({ content: line, type, attackId });
 
@@ -493,40 +484,15 @@ export const useScenarioTerminal = (scenarioId: string) => {
     const output = data.data?.output || data.data?.data?.output || data.payload || data.message;
     const messageType = data.type;
     
-    // Detailed tracing to understand message origins and flow
-    console.log(`🔍 [ScenarioTerminal-RAW] Received message:`, {
-      hookInstance: instanceId.current,
-      isActive: isActiveInstance.current,
-      messageType,
-      dataScenarioId,
-      targetScenarioId: scenarioId,
-      attackId,
-      hasOutput: !!output,
-      outputLength: output?.length || 0,
-      outputPreview: typeof output === 'string' ? output.substring(0, 100) : (output ? JSON.stringify(output).substring(0, 100) : 'no output'),
-      timestamp: data.timestamp || data.data?.timestamp,
-      fullMessage: data,
-      stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' -> ')
-    });
-
     // Check if instance is still active
     if (!isActiveInstance.current) {
-      console.log(`❌ [ScenarioTerminal] Message ignored - instance ${instanceId.current} is deactivated`);
       return;
     }
 
     // Identifier si le message concerne ce scénario
     if (dataScenarioId && dataScenarioId !== scenarioId) {
-      console.log(`🎯 [ScenarioTerminal] Message for different scenario (${dataScenarioId} vs ${scenarioId}) - ignoring`);
       return;
     }
-
-    console.log(`✅ [ScenarioTerminal] Processing message for scenario ${scenarioId}:`, {
-      type: messageType,
-      attackId,
-      outputLength: output?.length || 0,
-      instance: instanceId.current
-    });
 
     // Traitement prioritaire des messages d'erreur directs dans scenario-update
     if (data.type === 'scenario-update' && data.error && data.attackId) {
@@ -537,8 +503,6 @@ export const useScenarioTerminal = (scenarioId: string) => {
       // Afficher l'erreur immédiatement
       const errorMessage = data.error;
       appendOutput(`❌ Attack ${attackNum} failed: ${errorMessage}`, 'error');
-      
-      console.log(`🚨 [ScenarioTerminal] Direct error for attack ${attackNum}:`, errorMessage);
       return;
     }
 
@@ -594,28 +558,6 @@ export const useScenarioTerminal = (scenarioId: string) => {
         // Messages globaux du scénario - afficher dans l'output global
         appendOutput(output, messageType);
         
-        // Détecter les messages de début et fin de scénario pour ajouter du contexte
-        const outputLower = output.toLowerCase();
-        
-        // Messages de début de scénario
-        if (outputLower.includes('starting scenario') || outputLower.includes('scenario started') ||
-            outputLower.includes('execution request sent')) {
-          // Ajouter des informations contextuelles si disponibles
-          if (outputLower.includes('execution request sent for scenario')) {
-            const scenarioMatch = output.match(/execution request sent for scenario (.+)/i);
-            if (scenarioMatch) {
-              const scenarioName = scenarioMatch[1];
-              console.log(`[ScenarioTerminal] Scenario ${scenarioName} execution started`);
-            }
-          }
-        }
-        
-        // Messages de fin de scénario
-        if (outputLower.includes('scenario execution finished') || 
-            outputLower.includes('all attacks') ||
-            outputLower.includes('execution completed')) {
-          console.log(`[ScenarioTerminal] Scenario execution completed`);
-        }
       }
     } else if (data.data?.type === 'terminal-error' && (data.data?.output || data.data?.error)) {
       const attackId = data.data.attackId || data.data.terminalId;
@@ -640,8 +582,6 @@ export const useScenarioTerminal = (scenarioId: string) => {
       const errorMessage = data.error;
       appendOutput(`❌ Attack ${attackNum} failed: ${errorMessage}`, 'error');
       updateAttackStatus(attackId, 'failed');
-      
-      console.log(`🚨 [ScenarioTerminal] Attack ${attackNum} failed with error:`, errorMessage);
       return;
       
     } else if (data.data?.type === 'terminal-status' && data.data?.status) {
@@ -658,10 +598,9 @@ export const useScenarioTerminal = (scenarioId: string) => {
         const errorKey = `attack-${attackNum}-failed`;
         if (displayedErrorMessages.has(errorKey)) {
           // Un message d'erreur détaillé a déjà été affiché, ignorer le message générique
-          console.log(`[DEBUG] Skipping generic error message for Attack ${attackNum} - detailed error already shown`);
           return;
         }
-        
+
         // Analyser l'historique pour obtenir plus de détails sur l'échec
         const normalizedAttackId = attackMatch ? `attack-${attackMatch[1]}` : attackId;
         const attackOutputHistory = attackOutputs[normalizedAttackId] || [];
@@ -736,17 +675,16 @@ export const useScenarioTerminal = (scenarioId: string) => {
           finalErrorMessage = data.data.error.substring(0, 120);
         } else {
           // Ne pas afficher de message générique - l'erreur détaillée a déjà été affichée
-          console.log(`[DEBUG] Skipping generic error message for Attack ${attackNum} - no additional details available`);
           return;
         }
-        
+
         appendOutput(`❌ Attack ${attackNum} failed: ${finalErrorMessage}`, 'error');
-        
+
         // Marquer ce message d'erreur comme affiché
         setDisplayedErrorMessages(prev => {
           const updated = new Set(prev);
           updated.add(errorKey);
-          
+
           // Nettoyer après 60 secondes
           setTimeout(() => {
             setDisplayedErrorMessages(current => {
@@ -755,17 +693,8 @@ export const useScenarioTerminal = (scenarioId: string) => {
               return cleaned;
             });
           }, 60000);
-          
+
           return updated;
-        });
-        
-        // Log de debug pour le diagnostic
-        console.log(`[DEBUG] Attack ${attackNum} attack-status failure:`, {
-          dockerError,
-          errorDetails,
-          lastErrorMessage,
-          originalError: data.data.error,
-          totalMessages: attackOutputHistory.length
         });
       } else if (data.data.status === 'running') {
         updateAttackStatus(attackId, 'running');
@@ -820,14 +749,13 @@ export const useScenarioTerminal = (scenarioId: string) => {
           const errorKey = `attack-${attackNum}-failed`;
           if (displayedErrorMessages.has(errorKey)) {
             // Un message d'erreur détaillé a déjà été affiché, ignorer le message générique
-            console.log(`[DEBUG] Skipping generic error message for Attack ${attackNum} - detailed error already shown`);
             return;
           }
-          
+
           // Analyser l'historique pour obtenir plus de détails sur l'échec
           const normalizedAttackId = attackMatch ? `attack-${attackMatch[1]}` : attackId;
           const attackOutputHistory = attackOutputs[normalizedAttackId] || [];
-          
+
           let errorDetails = '';
           let dockerError = '';
           let lastErrorMessage = '';
@@ -898,17 +826,16 @@ export const useScenarioTerminal = (scenarioId: string) => {
             finalErrorMessage = data.error.substring(0, 120);
           } else {
             // Ne pas afficher de message générique - l'erreur détaillée a déjà été affichée
-            console.log(`[DEBUG] Skipping generic error message for Attack ${attackNum} - no additional details available`);
             return;
           }
-          
+
           appendOutput(`❌ Attack ${attackNum} failed: ${finalErrorMessage}`, 'error');
-          
+
           // Marquer ce message d'erreur comme affiché
           setDisplayedErrorMessages(prev => {
             const updated = new Set(prev);
             updated.add(errorKey);
-            
+
             // Nettoyer après 60 secondes
             setTimeout(() => {
               setDisplayedErrorMessages(current => {
@@ -917,18 +844,8 @@ export const useScenarioTerminal = (scenarioId: string) => {
                 return cleaned;
               });
             }, 60000);
-            
+
             return updated;
-          });
-          
-          // Log de debug pour le diagnostic
-          console.log(`[DEBUG] Attack ${attackNum} attack-status failure:`, {
-            dockerError,
-            errorDetails,
-            lastErrorMessage,
-            originalError: data.error,
-            totalMessages: attackOutputHistory.length,
-            recentMessages: attackOutputHistory.slice(-5).map(m => ({ content: m.content, type: m.type }))
           });
         }
         // Ignore 'started' status to reduce noise
@@ -959,71 +876,39 @@ export const useScenarioTerminal = (scenarioId: string) => {
     if (scenarioId) {
       instanceId.current = `${scenarioId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       isActiveInstance.current = true;
-      console.log(`🆕 [ScenarioTerminal] New instance created for scenario ${scenarioId}: ${instanceId.current}`);
     }
   }, [scenarioId]);
-  
+
   // Only deactivate on actual component unmount (when scenarioId becomes null/undefined)
   useEffect(() => {
     return () => {
       if (!scenarioId) {
         isActiveInstance.current = false;
-        console.log(`🔚 [ScenarioTerminal] Instance ${instanceId.current} deactivated on unmount`);
       }
     };
   }, [scenarioId]);
-  
+
   // S'abonner aux événements du scénario
   useEffect(() => {
-    console.log(`🔍 [ScenarioTerminal-EFFECT] Effect triggered:`, {
-      scenarioId: !!scenarioId,
-      isConnected,
-      isActiveInstance: isActiveInstance.current,
-      instanceId: instanceId.current,
-      shouldRegisterListener: !!(scenarioId && isConnected && isActiveInstance.current)
-    });
-    
     if (!scenarioId || !isConnected || !isActiveInstance.current) {
-      console.log(`❌ [ScenarioTerminal-EFFECT] Conditions not met - not registering listener:`, {
-        hasScenarioId: !!scenarioId,
-        isConnected,
-        isActiveInstance: isActiveInstance.current
-      });
       return;
     }
 
     // Nettoyer les écouteurs existants avant d'en ajouter de nouveaux
     cleanupListeners();
 
-    // Wrapper function to trace all scenario-update events
+    // Wrapper function for scenario-update events
     const tracedHandler = (data: any) => {
-      console.log(`🎯 [ScenarioTerminal-LISTENER] scenario-update event received:`, {
-        eventType: 'scenario-update',
-        instance: instanceId.current,
-        isActive: isActiveInstance.current,
-        scenarioId,
-        messageScenarioId: data.scenarioId || (data.data && data.data.scenarioId),
-        messageType: data.type,
-        hasData: !!data.data,
-        hasOutput: !!(data.data?.output || data.data?.data?.output),
-        timestamp: Date.now(),
-        stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' -> ')
-      });
-      
       handleGenericMessage(data);
     };
 
     // Listen only to scenario-update to avoid duplication
     websocket.on('scenario-update', tracedHandler);
-    
-    console.log(`🎧 [ScenarioTerminal] Set up WebSocket listener for scenario ${scenarioId} (instance: ${instanceId.current})`);
-    console.log(`📊 [ScenarioTerminal] WebSocket listener registered for 'scenario-update'`);
 
     return () => {
       // Clean up this specific listener
       websocket.off('scenario-update', tracedHandler);
       cleanupListeners();
-      console.log(`🧹 [ScenarioTerminal] Cleaned up WebSocket listener for scenario ${scenarioId} (instance: ${instanceId.current})`);
     };
   }, [scenarioId, isConnected, cleanupListeners, handleGenericMessage]); // Dépendances stables
 
@@ -1078,7 +963,6 @@ export const useScenarioTerminal = (scenarioId: string) => {
 
   // Clear terminal function that also clears localStorage
   const clearTerminal = useCallback(() => {
-    console.log(`🧹 [ScenarioTerminal] Clearing terminal for scenario ${scenarioId} (instance: ${instanceId.current})`);
     setOutput([]);
     setAttackOutputs({});
     clearStorage(scenarioId);

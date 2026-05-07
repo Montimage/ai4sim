@@ -221,7 +221,6 @@ export class CampaignService {
    */
   async getScenariosByCampaign(campaignId: string): Promise<any[]> {
     try {
-      console.log('🚨 CampaignService.getScenariosByCampaign() APPELÉE avec campaignId:', campaignId);
       logger.info('🚨 CampaignService.getScenariosByCampaign() APPELÉE avec campaignId:', campaignId);
       
       // Validate the campaignId format

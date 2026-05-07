@@ -3,17 +3,8 @@ import { api } from './api';
 
 // Fonctions de base pour les projets
 export async function getProjects(): Promise<Project[]> {
-  console.log('📂 projectService: Récupération de tous les projets');
   try {
     const response = await api.get('/api/projects');
-    console.log(`✅ projectService: ${response.data.length} projets récupérés`);
-    
-    // Log des IDs des projets pour diagnostic
-    if (response.data && Array.isArray(response.data)) {
-      const projectIds = response.data.map(p => p._id);
-      console.log('📋 IDs des projets disponibles:', projectIds);
-    }
-    
     return response.data;
   } catch (error) {
     console.error('❌ projectService: Erreur lors de la récupération des projets:', error);
@@ -22,10 +13,8 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function getProject(projectId: string): Promise<Project> {
-  console.log('🔍 projectService: Demande du projet avec ID:', projectId);
   try {
     const response = await api.get(`/api/projects/${projectId}`);
-    console.log('✅ projectService: Projet récupéré avec succès:', response.data);
     return response.data;
   } catch (error) {
     console.error('❌ projectService: Erreur lors de la récupération du projet:', error);
@@ -93,8 +82,6 @@ export async function addCampaignToProject(
     
     // 2. Vérifier si le projet retourné contient la campagne
     if (response.data && (!response.data.campaigns || response.data.campaigns.length === 0)) {
-      console.log('⚠️ La campagne a été créée mais ne figure pas dans la réponse. Récupération du projet mis à jour...');
-      
       // 3. Si non, faire une requête GET pour récupérer le projet à jour
       const updatedProjectResponse = await api.get(`/api/projects/${projectId}`);
       return updatedProjectResponse.data;

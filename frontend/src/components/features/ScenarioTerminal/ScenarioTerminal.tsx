@@ -18,14 +18,7 @@ const ScenarioTerminal: React.FC<ScenarioTerminalProps> = ({
   const [terminal, setTerminal] = useState<TerminalState | null>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   
-  // Logs pour vérifier que le composant est bien chargé
-  console.log(`%c🔍 ScenarioTerminal RENDU: ${scenarioId}-${terminalId}`, 
-    'background: #000066; color: #ffffff; font-weight: bold; padding: 2px 5px; border-radius: 3px;');
-
   useEffect(() => {
-    console.log(`%c🔄 ScenarioTerminal EFFET: ${scenarioId}-${terminalId}`, 
-      'background: #006600; color: #ffffff; font-weight: bold; padding: 2px 5px; border-radius: 3px;');
-      
     const unsubscribe = scenarioTerminalService.subscribeToTerminal(
       scenarioId,
       terminalId,
@@ -95,13 +88,6 @@ const ScenarioTerminal: React.FC<ScenarioTerminalProps> = ({
       >
         <div className="space-y-1">
           {terminal.outputBuffer.map((output, index) => {
-            // Log tous les messages pour voir s'ils passent bien ici
-            console.log(`%c📟 Message type=${output.type}: ${output.content}`, 
-              output.type === 'error' 
-                ? 'background: #660000; color: #ffaaaa;' 
-                : 'background: #006600; color: #aaffaa;'
-            );
-            
             return (
               <div
                 key={`${index}-${output.timestamp}`}

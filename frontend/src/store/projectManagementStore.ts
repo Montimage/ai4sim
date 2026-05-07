@@ -84,9 +84,8 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
       // Actions pour les scénarios
       loadScenariosByProject: async (projectId: string, campaignId?: string) => {
         try {
-          console.log('🔍 Store: Chargement des scénarios...', { projectId, campaignId });
           set({ isLoadingScenarios: true, errorScenarios: null });
-          
+
           let scenarios: Scenario[] = [];
           try {
             // Try to get scenarios, but don't fail the whole operation if it fails
@@ -95,9 +94,8 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
             console.warn('⚠️ Store: Erreur récupération scénarios, utilisation liste vide:', scenarioError);
             // Continue with empty array
           }
-          
+
           const key = campaignId ? `${projectId}-${campaignId}` : projectId;
-          console.log('✅ Store: Scénarios reçus:', { key, scenarios });
           set(state => ({
             scenarios: {
               ...state.scenarios,
@@ -105,7 +103,6 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
             },
             isLoadingScenarios: false
           }));
-          console.log('💾 Store: État mis à jour avec les scénarios');
         } catch (error) {
           console.error('❌ Store: Erreur lors du chargement des scénarios:', error);
           const key = campaignId ? `${projectId}-${campaignId}` : projectId;
@@ -161,14 +158,7 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
           
           // Les cibles et attaques peuvent être configurées après la création du scénario
           
-          console.log('📝 Store: Création du scénario avec données:', {
-            projectId,
-            campaignId: scenarioData.campaignId,
-            data: scenarioData
-          });
-          
           const newScenario = await scenarioService.createScenario(projectId, scenarioData.campaignId, scenarioData);
-          console.log('✅ Store: Scénario créé avec succès:', newScenario);
           
           // Mettre à jour l'état avec la nouvelle liste de scénarios
           const scenarios = await scenarioService.getScenariosByCampaign(projectId, scenarioData.campaignId);
@@ -462,7 +452,6 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
               ? projectCampaigns.map(c => c._id === campaignId ? campaign : c)
               : [...projectCampaigns, campaign];
             
-            console.log(`🔄 ProjectManagementStore: Campagne ${campaignId} ${campaignExists ? 'mise à jour' : 'ajoutée'} pour le projet ${projectId}`);
             
             return {
               currentCampaign: campaign,

@@ -2,6 +2,7 @@ import { ExecutionStep, IAgentSession } from '../models/AgentSession';
 import { IAgentConfig } from '../models/AgentConfig';
 import { spawn } from 'child_process';
 import { llmService, LLMRequest } from './LLMService';
+import { logger } from '../utils/logger';
 
 export class AgentService {
   
@@ -9,7 +10,7 @@ export class AgentService {
    * Exécute le Scanning Agent pour la reconnaissance
    */
   async executeScanningAgent(step: ExecutionStep, config: IAgentConfig, session: IAgentSession): Promise<any> {
-    console.log(`🔍 Exécution Scanning Agent pour ${session.targetIp}`);
+    logger.info(`🔍 Exécution Scanning Agent pour ${session.targetIp}`);
     
     try {
       // Construire la commande nmap selon les paramètres
@@ -87,7 +88,7 @@ Retourne un JSON avec cette structure:
    * Exécute MAIP Agent pour les attaques IA
    */
   async executeMAIPAgent(step: ExecutionStep, config: IAgentConfig, session: IAgentSession): Promise<any> {
-    console.log(`🤖 Exécution MAIP Agent`);
+    logger.info(`🤖 Exécution MAIP Agent`);
     
     try {
       // Simuler l'exécution de MAIP (en attendant l'intégration réelle)
@@ -127,7 +128,7 @@ Simule une attaque intelligente et retourne le résultat au format JSON:
    * Exécute Caldera Agent pour les simulations d'attaque
    */
   async executeCalderaAgent(step: ExecutionStep, config: IAgentConfig, session: IAgentSession): Promise<any> {
-    console.log(`⚔️ Exécution Caldera Agent`);
+    logger.info(`⚔️ Exécution Caldera Agent`);
     
     try {
       // Simuler Caldera (en attendant l'intégration réelle)
@@ -174,7 +175,7 @@ Simule une opération Caldera et retourne:
    * Exécute Shennina Pentest Agent
    */
   async executeShenninaPentestAgent(step: ExecutionStep, config: IAgentConfig, session: IAgentSession): Promise<any> {
-    console.log(`🎯 Exécution Shennina Pentest Agent`);
+    logger.info(`🎯 Exécution Shennina Pentest Agent`);
     
     try {
       const shenninaTquest: LLMRequest = {

@@ -334,7 +334,6 @@ class ExecutionHistoryService {
   public async cleanupStaleExecutions(): Promise<{ cleanedCount: number; message: string }> {
     try {
       const response = await api.post('/api/executions/cleanup/stale');
-      console.log('Stale executions cleanup result:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error cleaning up stale executions:', error);

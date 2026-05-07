@@ -55,31 +55,19 @@ const testCases = [
  * Fonction de test pour valider le parsing JSON amélioré
  */
 export function testJsonParsing() {
-  console.log('🧪 Test du parsing JSON amélioré...\n');
-  
   testCases.forEach((testCase, index) => {
-    console.log(`Test ${index + 1}: ${testCase.name}`);
-    console.log('JSON original:', testCase.json);
-    
     try {
       // Test du JSON original
       JSON.parse(testCase.json);
-      console.log('✅ JSON original valide');
     } catch (error) {
-      console.log('❌ JSON original invalide:', error instanceof Error ? error.message : 'Unknown error');
-      
       // Test avec réparation (simulation de la méthode repairMalformedJson)
       try {
         const repaired = repairMalformedJson(testCase.json);
         JSON.parse(repaired);
-        console.log('✅ JSON réparé avec succès');
-        console.log('JSON réparé:', repaired);
       } catch (repairError) {
-        console.log('❌ Échec de la réparation:', repairError instanceof Error ? repairError.message : 'Unknown error');
+        // Repair failed
       }
     }
-    
-    console.log('---\n');
   });
 }
 

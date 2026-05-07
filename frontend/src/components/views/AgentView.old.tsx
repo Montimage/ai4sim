@@ -320,7 +320,6 @@ const AgentView: React.FC = () => {
             } : null);
           }
           
-          console.log(`🔄 Session ${sessionId} status updated: ${session.status}`);
         }
       }
     } catch (error) {
@@ -839,12 +838,9 @@ const AgentView: React.FC = () => {
               : conv
           ));
           
-          console.log(`✅ Chat history loaded for conversation ${conversationId}: ${messagesWithDates.length} messages`);
           if (data.pentestSession) {
-            console.log(`🔗 Pentest session linked: ${data.pentestSession.id} (${data.pentestSession.status})`);
           }
         } else {
-          console.log(`ℹ️ No chat history found for conversation ${conversationId}`);
         }
       } else {
         console.warn(`Failed to load chat history for ${conversationId}:`, response.status);
@@ -955,7 +951,6 @@ const AgentView: React.FC = () => {
             : conv
         ));
         
-        console.log(`🚀 Pentest session started: ${data.pentestSession} for conversation ${currentConversation.id}`);
         addChatMessage(`✅ Session de pentest ${data.pentestSession} créée et en cours d'exécution sur ${data.target}`, true, 'pentest-started');
       } else {
         // Add regular response
@@ -1102,7 +1097,6 @@ const AgentView: React.FC = () => {
         // Add the response message with pentest info
         addMessageToConversation(conversationId, data.response, true, 'pentest-started');
         
-        console.log(`🚀 Pentest session started: ${data.pentestSession} for conversation ${conversationId}`);
       } else {
         // Handle regular responses or other pentest responses
         
@@ -1209,7 +1203,6 @@ ${defaultTools}
     
     try {
       const token = localStorage.getItem('token');
-      console.log('🔍 Generating report for session:', currentSession.id);
       
       const response = await fetch(`/api/agents/session/${currentSession.id}/report`, {
         method: 'POST',
@@ -1227,7 +1220,6 @@ ${defaultTools}
         })
       });
 
-      console.log('📡 Report generation response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1236,7 +1228,6 @@ ${defaultTools}
       }
 
       const data = await response.json();
-      console.log('📊 Report generation response:', data);
       
       if (data.success) {
         const report = data.report;
@@ -1320,7 +1311,6 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
     
     try {
       const token = localStorage.getItem('token');
-      console.log('🔍 Exporting session data for:', currentSession.id);
       
       const response = await fetch(`/api/agents/session/${currentSession.id}/export`, {
         method: 'GET',
@@ -1329,7 +1319,6 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
         }
       });
 
-      console.log('📡 Export response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1338,7 +1327,6 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
       }
 
       const data = await response.json();
-      console.log('📁 Export data received:', data);
       
       // Créer un fichier de téléchargement
       const exportBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

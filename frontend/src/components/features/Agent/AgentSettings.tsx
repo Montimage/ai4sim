@@ -134,7 +134,6 @@ const AgentSettings: React.FC = () => {
 
   const saveSettings = () => {
     // Here, we would save the settings to the server
-    console.log('Saving settings:', { globalSettings, agentConfigs });
     setIsModified(false);
     alert('Settings saved!');
   };

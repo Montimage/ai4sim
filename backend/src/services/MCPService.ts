@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 
 /**
  * MCP Service - Monitoring and Content Provisioning
@@ -16,7 +17,7 @@ export class MCPService {
    */
   async searchCVE(cveId: string): Promise<any> {
     try {
-      console.log(`🔍 Recherche CVE: ${cveId}`);
+      logger.info(`🔍 Recherche CVE: ${cveId}`);
       
       const response = await axios.get(`${this.searchEngines.cve}cve/${cveId}`, {
         timeout: 10000,
@@ -47,7 +48,7 @@ export class MCPService {
    */
   async searchExploits(vulnerability: string): Promise<any> {
     try {
-      console.log(`🎯 Recherche exploits pour: ${vulnerability}`);
+      logger.info(`🎯 Recherche exploits pour: ${vulnerability}`);
       
       // Simuler une recherche d'exploit (remplacer par une vraie API)
       const mockExploits = [
@@ -86,7 +87,7 @@ export class MCPService {
    */
   async searchPatches(vulnerability: string, product?: string): Promise<any> {
     try {
-      console.log(`🔧 Recherche patches pour: ${vulnerability}`);
+      logger.info(`🔧 Recherche patches pour: ${vulnerability}`);
       
       // Simuler une recherche de patches
       const mockPatches = [
@@ -125,7 +126,7 @@ export class MCPService {
    */
   async searchServiceInfo(service: string, port: number): Promise<any> {
     try {
-      console.log(`🔍 Recherche infos service: ${service}:${port}`);
+      logger.info(`🔍 Recherche infos service: ${service}:${port}`);
       
       // Base de données simulée des services communs
       const serviceDatabase: Record<string, any> = {
@@ -190,7 +191,7 @@ export class MCPService {
    */
   async searchMITRETechniques(query: string): Promise<any> {
     try {
-      console.log(`🎯 Recherche techniques MITRE: ${query}`);
+      logger.info(`🎯 Recherche techniques MITRE: ${query}`);
       
       // Base de données simulée MITRE ATT&CK
       const mitreTechniques = [
@@ -242,7 +243,7 @@ export class MCPService {
    */
   async enrichScanData(scanData: any): Promise<any> {
     try {
-      console.log(`📈 Enrichissement des données de scan`);
+      logger.info(`📈 Enrichissement des données de scan`);
       
       const enrichedData = { ...scanData };
       
@@ -300,7 +301,7 @@ export class MCPService {
    */
   async webSearch(query: string): Promise<any> {
     try {
-      console.log(`🌐 Recherche web: ${query}`);
+      logger.info(`🌐 Recherche web: ${query}`);
       
       // Simuler une recherche web (remplacer par une vraie API comme DuckDuckGo)
       const mockResults = [

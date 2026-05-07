@@ -76,15 +76,11 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
   };
 
   const handleSelectProject = (projectId: string) => {
-    console.log('👆 ProjectsList: Project clicked:', projectId);
     selectProject(projectId);
-    console.log('✅ ProjectsList: Project selection triggered');
     onProjectSelect?.(projectId);
   };
 
   const handleOpenSettings = (project: any) => {
-    console.log('🔧 Opening settings for project:', project);
-    
     // Transform project data to include users with roles
     // Handle case where owner might be just an ID string
     const ownerUser = typeof project.owner === 'string' 
@@ -105,7 +101,6 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
       ]
     };
     
-    console.log('🔧 Project settings prepared:', projectSettings);
     setSelectedProject(projectSettings);
     setShowSettingsModal(true);
   };
@@ -205,8 +200,6 @@ export const ProjectsList: React.FC<ProjectsListProps> = observer(({ onProjectSe
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   };
-
-  console.log('📋 ProjectsList: Current projects:', projects);
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">

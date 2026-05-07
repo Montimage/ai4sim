@@ -1,5 +1,6 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
+import { logger } from '../utils/logger';
 
 export class SocketService {
   private static instance: SocketService;
@@ -27,7 +28,7 @@ export class SocketService {
     });
 
     this.io.on('connection', (socket) => {
-      console.log(`🔌 Socket connecté: ${socket.id}`);
+      logger.info(`🔌 Socket connecté: ${socket.id}`);
 
       // Authentification par userId
       socket.on('authenticate', (userId: string) => {
@@ -36,11 +37,11 @@ export class SocketService {
         }
         this.userSockets.get(userId)?.push(socket.id);
         socket.join(`user:${userId}`);
-        console.log(`👤 Socket ${socket.id} authentifié pour user ${userId}`);
+        logger.info(`👤 Socket ${socket.id} authentifié pour user ${userId}`);
       });
 
       socket.on('disconnect', () => {
-        console.log(`🔌 Socket déconnecté: ${socket.id}`);
+        logger.info(`🔌 Socket déconnecté: ${socket.id}`);
         // Nettoyer les associations utilisateur
         this.userSockets.forEach((sockets, userId) => {
           const index = sockets.indexOf(socket.id);
@@ -54,7 +55,7 @@ export class SocketService {
       });
     });
 
-    console.log('✅ Service Socket initialisé');
+    logger.info('✅ Service Socket initialisé');
   }
 
   /**
@@ -67,7 +68,7 @@ export class SocketService {
     }
 
     this.io.to(`user:${userId}`).emit(event, data);
-    console.log(`📡 Événement '${event}' envoyé à user ${userId}:`, data);
+    logger.info(`📡 Événement '${event}' envoyé à user ${userId}:`, data);
   }
 
   /**
@@ -80,7 +81,7 @@ export class SocketService {
     }
 
     this.io.emit(event, data);
-    console.log(`📡 Événement '${event}' diffusé à tous:`, data);
+    logger.info(`📡 Événement '${event}' diffusé à tous:`, data);
   }
 
   /**

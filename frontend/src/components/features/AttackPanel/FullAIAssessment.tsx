@@ -122,7 +122,6 @@ export const FullAIAssessment: React.FC<FullAIAssessmentProps> = ({ tabId }) => 
         tabId: tabId
       }));
 
-      console.log('[FullAIAssessment] Command sent via WebSocket');
     } catch (error) {
       console.error('Error starting AI assessment:', error);
       // Error messages will be handled by GlobalWebSocketHandler

@@ -128,12 +128,6 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
     e.preventDefault();
     if (!selectedTool || !selectedAttackVariant || selectedTargetIndex === null) return;
 
-    // Debug logs
-    console.log('🔧 DEBUG: selectedTool:', selectedTool);
-    console.log('🔧 DEBUG: selectedTool.id:', selectedTool.id);
-    console.log('🔧 DEBUG: selectedAttackVariant:', selectedAttackVariant);
-    console.log('🔧 DEBUG: selectedAttackId:', selectedAttackId);
-
     // Integrate selected target information into parameters
     const updatedParameters: Record<string, any> = { ...parameters };
     if (selectedTargetIndex !== null && scenario.targets[selectedTargetIndex]) {
@@ -178,13 +172,10 @@ const ScenarioAttacks: React.FC<ScenarioAttacksProps> = ({ scenario, onSave }) =
       results: null
     };
 
-    console.log('🔧 DEBUG: newAttack being created:', newAttack);
-
     const updatedAttacks = [...attacks, newAttack];
 
     try {
       setIsSubmitting(true);
-      console.log('🔧 DEBUG: Saving attacks to scenario:', updatedAttacks);
       await onSave({ attacks: updatedAttacks });
       setAttacks(updatedAttacks);
       resetFunnel();

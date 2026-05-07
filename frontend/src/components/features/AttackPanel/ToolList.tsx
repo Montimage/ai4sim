@@ -33,7 +33,6 @@ export const ToolList: React.FC<ToolListProps> = ({ tabId }) => {
   }, [tabState?.selectedCategory]);
 
   const onToolSelect = (toolId: string) => {
-    console.log('🔧 DEBUG: Selecting tool:', toolId);
     handleToolSelect(tabId, toolId);
   };
 

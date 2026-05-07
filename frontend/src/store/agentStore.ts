@@ -133,7 +133,6 @@ export const useAgentStore = create<AgentStore>()(
             currentSession: newSession
           }));
 
-          console.log('✅ Session créée avec succès:', newSession.id);
           return newSession;
 
         } catch (error) {
@@ -168,7 +167,6 @@ export const useAgentStore = create<AgentStore>()(
     const session = get().sessions.find(s => s.id === sessionId);
     if (session) {
       set({ currentSession: session });
-          console.log('📍 Session chargée:', sessionId);
     }
   },
 
@@ -217,8 +215,7 @@ export const useAgentStore = create<AgentStore>()(
             throw new Error(`Erreur d'exécution: ${response.status}`);
           }
 
-          const data = await response.json();
-          console.log('✅ Exécution automatique terminée:', data);
+          await response.json();
 
         } catch (error) {
           console.error('❌ Erreur lors de l\'exécution:', error);
@@ -258,8 +255,7 @@ export const useAgentStore = create<AgentStore>()(
             throw new Error(`Erreur d'approbation: ${response.status}`);
           }
 
-          const data = await response.json();
-          console.log('✅ Étape approuvée:', data);
+          await response.json();
 
         } catch (error) {
           console.error('❌ Erreur lors de l\'approbation:', error);

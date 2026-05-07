@@ -108,8 +108,6 @@ export const useChat = (conversationHooks: any, _sessionHooks: any) => {
         
         // Add the response message with pentest info
         addMessageToConversation(conversationId, data.response, true, 'pentest-started');
-        
-        console.log(`🚀 Pentest session started: ${data.pentestSession} for conversation ${conversationId}`);
       } else {
         // Handle regular responses or other pentest responses
         const responseIsPentestRequest = isRealPentestRequest(data.response);
@@ -213,8 +211,6 @@ ${defaultTools}
       return;
     }
     
-    // Logic to start pentest (from original code)
-    console.log('Starting pentest for target:', target);
   };
 
   return {

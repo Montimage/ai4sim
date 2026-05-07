@@ -104,31 +104,22 @@ export const ScenarioConfiguration: React.FC = () => {
   const handleSave = async (updates: Partial<Scenario>) => {
     if (!scenarioId || !projectId || !campaignId || !scenario) return;
     try {
-      // Debug logs
-      console.log('🔧 DEBUG: handleSave called with updates:', updates);
-      console.log('🔧 DEBUG: current scenario attacks:', scenario.attacks);
-      
       // Ensure attacks is always an array if provided
       const cleanedUpdates = { ...updates };
       if (cleanedUpdates.attacks) {
         // If attacks is nested inside an object, extract the array
         if (typeof cleanedUpdates.attacks === 'object' && 'attacks' in cleanedUpdates.attacks) {
-          console.log('🔧 DEBUG: Found nested attacks structure, extracting array');
           cleanedUpdates.attacks = (cleanedUpdates.attacks as any).attacks;
         }
-        
+
         // Ensure it's an array
         if (!Array.isArray(cleanedUpdates.attacks)) {
           console.error('🔧 DEBUG: attacks is not an array:', typeof cleanedUpdates.attacks, cleanedUpdates.attacks);
           throw new Error('Invalid attacks data structure');
         }
-        
-        console.log('🔧 DEBUG: Cleaned attacks array:', cleanedUpdates.attacks);
       }
-      
+
       const updatedScenario = { ...scenario, ...cleanedUpdates };
-      console.log('🔧 DEBUG: Final updatedScenario being sent:', updatedScenario);
-      
       await updateScenario(scenarioId, updatedScenario, projectId, campaignId);
       toast.success('Changes saved successfully');
     } catch (err) {

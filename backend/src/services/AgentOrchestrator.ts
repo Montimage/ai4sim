@@ -115,7 +115,7 @@ export class AgentOrchestrator {
    * Lance une nouvelle session d'attaque automatisée
    */
   async startNewSession(request: StartSessionRequest): Promise<IAgentSession> {
-    console.log(`🤖 Démarrage nouvelle session Agent pour user ${request.userId}`);
+    logger.info(`🤖 Démarrage nouvelle session Agent pour user ${request.userId}`);
     
     // Extraire l'IP du prompt si non fournie
     const targetIp = request.targetIp || this.extractIPFromPrompt(request.prompt);
@@ -162,7 +162,7 @@ export class AgentOrchestrator {
    */
   private async startAnalysisPhase(session: IAgentSession) {
     try {
-      console.log(`🧠 Phase d'analyse pour session ${session.sessionId}`);
+      logger.info(`🧠 Phase d'analyse pour session ${session.sessionId}`);
       
       // Mettre à jour le statut
       session.status = 'PLANNING';
@@ -229,7 +229,7 @@ export class AgentOrchestrator {
    */
   private async startExecution(session: IAgentSession) {
     try {
-      console.log(`⚔️ Début d'exécution pour session ${session.sessionId}`);
+      logger.info(`⚔️ Début d'exécution pour session ${session.sessionId}`);
       
       session.status = 'ATTACKING';
       session.metadata.attackingTime = Date.now();
@@ -297,7 +297,7 @@ export class AgentOrchestrator {
     const stepIndex = session.executionPlan.findIndex(s => s.step === step.step);
     if (stepIndex === -1) return;
 
-    console.log(`🔄 Exécution étape ${step.step}: ${step.agent} - ${step.description}`);
+    logger.info(`🔄 Exécution étape ${step.step}: ${step.agent} - ${step.description}`);
 
     // Marquer comme en cours
     session.updateStepStatus(stepIndex, 'RUNNING');
@@ -369,7 +369,7 @@ export class AgentOrchestrator {
    */
   private async startReporting(session: IAgentSession) {
     try {
-      console.log(`📊 Phase de reporting pour session ${session.sessionId}`);
+      logger.info(`📊 Phase de reporting pour session ${session.sessionId}`);
       
       session.status = 'REPORTING';
       session.metadata.reportingTime = Date.now();
@@ -425,7 +425,7 @@ export class AgentOrchestrator {
         executionTime: session.metadata.totalExecutionTime
       });
 
-      console.log(`✅ Session ${session.sessionId} terminée avec succès`);
+      logger.info(`✅ Session ${session.sessionId} terminée avec succès`);
 
     } catch (error: any) {
       console.error(`❌ Erreur pendant le reporting:`, error);

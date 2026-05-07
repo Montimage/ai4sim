@@ -46,11 +46,9 @@ export const AttackPanel: React.FC = () => {
 
   // Initialize global WebSocket handler for background processing
   useEffect(() => {
-    console.log('🚀 AttackPanel: Initializing global WebSocket handler');
     globalWebSocketHandler.initialize();
-    
+
     return () => {
-      console.log('🚀 AttackPanel: Cleaning up global WebSocket handler');
       globalWebSocketHandler.destroy();
     };
   }, []);

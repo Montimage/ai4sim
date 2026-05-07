@@ -108,7 +108,6 @@ const AgentView: React.FC = () => {
   
   // Fonction pour changer de vue et nettoyer l'état si nécessaire
   const switchView = useCallback((view: 'chat' | 'pipeline') => {
-    console.log(`🔄 Switching from ${currentView} to ${view}`);
     
     // ✅ Sauvegarder l'état de la vue actuelle avant de changer
     if (currentView === 'chat') {
@@ -136,7 +135,6 @@ const AgentView: React.FC = () => {
     if (view === 'chat') {
       const currentConversation = getCurrentConversation();
       if (!currentConversation?.pentestSession) {
-        console.log(`🧹 Clearing pipeline session when switching to chat (no session for conversation)`);
             // ✅ NE PAS vider la session si on était déjà en vue chat
             if (currentView !== 'chat') {
         setCurrentSession(null);
@@ -146,18 +144,15 @@ const AgentView: React.FC = () => {
     
     // Si on va vers la pipeline, forcer la synchronisation
     if (view === 'pipeline') {
-      console.log(`🔄 Switching to pipeline, forcing session sync`);
       
       // ✅ Synchronisation immédiate et plus robuste
       setTimeout(async () => {
         const currentConversation = getCurrentConversation();
         
         if (currentConversation?.pentestSession) {
-          console.log(`🔄 Found pentest session for current conversation: ${currentConversation.pentestSession.sessionId}`);
           
           // ✅ Créer immédiatement une session temporaire si elle n'existe pas
           if (!currentSession || currentSession.id !== currentConversation.pentestSession.sessionId) {
-            console.log(`🚀 Creating temporary session while loading backend data...`);
             const tempSession = {
               id: currentConversation.pentestSession.sessionId,
               target: currentConversation.pentestSession.target || 'Unknown',
@@ -208,7 +203,6 @@ const AgentView: React.FC = () => {
           // ✅ Reload complet des sessions pour s'assurer qu'on a les dernières données
           await loadPentestSessions();
         } else {
-          console.log(`❌ No session found for current conversation, keeping current session if exists`);
           
           // ✅ NE PAS vider la session courante s'il n'y a pas de session pour la conversation
           // Charger toutes les sessions pour vérifier s'il y en a d'autres
@@ -221,7 +215,6 @@ const AgentView: React.FC = () => {
             );
             
             if (activeSessions.length > 0) {
-              console.log(`🔄 Using active session: ${activeSessions[0].id}`);
               setCurrentSession(activeSessions[0]);
             }
           }
@@ -248,36 +241,12 @@ const AgentView: React.FC = () => {
     if (typeof newSession === 'function') {
       setCurrentSessionRaw(prev => {
         const result = newSession(prev);
-        console.log(`🔄 CURRENT SESSION UPDATE (function):`, {
-          previousSteps: prev?.steps?.length || 0,
-          newSteps: result?.steps?.length || 0,
-          previousId: prev?.id,
-          newId: result?.id,
-          stackTrace: new Error().stack?.split('\n').slice(1, 6).join('\n'),
-          timestamp: new Date().toISOString()
-        });
         if (prev?.steps?.length !== result?.steps?.length) {
-          console.log(`⚠️ STEPS COUNT CHANGED: ${prev?.steps?.length || 0} → ${result?.steps?.length || 0}`, {
-            previousSteps: prev?.steps?.map(s => ({ tool: s.tool, status: s.status })) || [],
-            newSteps: result?.steps?.map(s => ({ tool: s.tool, status: s.status })) || []
-          });
         }
         return result;
       });
     } else {
-      console.log(`🔄 CURRENT SESSION UPDATE (direct):`, {
-        previousSteps: currentSession?.steps?.length || 0,
-        newSteps: newSession?.steps?.length || 0,
-        previousId: currentSession?.id,
-        newId: newSession?.id,
-        stackTrace: new Error().stack?.split('\n').slice(1, 6).join('\n'),
-        timestamp: new Date().toISOString()
-      });
       if (currentSession?.steps?.length !== newSession?.steps?.length) {
-        console.log(`⚠️ STEPS COUNT CHANGED: ${currentSession?.steps?.length || 0} → ${newSession?.steps?.length || 0}`, {
-          previousSteps: currentSession?.steps?.map(s => ({ tool: s.tool, status: s.status })) || [],
-          newSteps: newSession?.steps?.map(s => ({ tool: s.tool, status: s.status })) || []
-        });
       }
       setCurrentSessionRaw(newSession);
     }
@@ -299,13 +268,11 @@ const AgentView: React.FC = () => {
     const currentConversation = getCurrentConversation();
     
     // Toujours réinitialiser la session courante quand la conversation change
-    console.log(`🔄 Synchronizing pipeline session for conversation: ${currentConversationId}`);
     
     // Première priorité : Session associée à la conversation active
     if (currentConversation?.pentestSession) {
       const session = currentConversation.pentestSession;
       
-      console.log(`📋 Found pentest session for conversation: ${session.sessionId}`);
       
       // Créer ou mettre à jour la session dans le Pipeline
       const pipelineSession: PentestSession = {
@@ -333,7 +300,6 @@ const AgentView: React.FC = () => {
         [session.sessionId]: pipelineSession
       }));
     } else {
-      console.log(`❌ No pentest session for conversation ${currentConversationId}, checking existing session`);
       
       // ✅ CORRECTION: NE PAS vider automatiquement la session courante
       // Seulement la vider si on est en vue chat ET qu'il n'y a vraiment aucune session active
@@ -348,11 +314,9 @@ const AgentView: React.FC = () => {
         );
         
         if (activeSessions.length > 0) {
-          console.log(`🔄 No session for conversation, using active session: ${activeSessions[0].id}`);
           setCurrentSession(activeSessions[0]);
         } else {
           // Seulement vider s'il n'y a vraiment aucune session active
-          console.log(`🧹 No active sessions found, clearing current session`);
           setCurrentSession(null);
         }
       }
@@ -421,16 +385,13 @@ const AgentView: React.FC = () => {
             // Vérifier si quelque chose a vraiment changé
             const sessionsEqual = JSON.stringify(prev) === JSON.stringify(sessionsMap);
             if (sessionsEqual) {
-              console.log('🔄 No changes in sessions, skipping update');
               return prev; // Retourner la référence précédente pour éviter re-render
             }
-            console.log('🔄 Sessions updated:', Object.keys(sessionsMap).length);
             return sessionsMap;
           });
           
           // Si on a trouvé une session active et qu'on n'a pas de currentSession, l'activer
           if (activeSession && !currentSession && (activeSession as any).steps && (activeSession as any).steps.length > 0) {
-            console.log(`🚀 Setting current session from loadPentestSessions: ${(activeSession as any).id} with ${(activeSession as any).steps.length} steps`);
             setCurrentSession(activeSession as any);
           }
         }
@@ -444,13 +405,11 @@ const AgentView: React.FC = () => {
   const refreshSessionStatus = useCallback(async (sessionId: string) => {
     try {
       const token = localStorage.getItem('token');
-      console.log(`🔄 Fetching session status for: ${sessionId}`);
       
       const response = await fetch(`/api/agents/pentest-session/${sessionId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      console.log(`📡 Response status: ${response.status} for session ${sessionId}`);
       
       if (response.status === 404) {
         console.warn(`⚠️ Session ${sessionId} not found (404). Creating fallback session.`);
@@ -564,7 +523,6 @@ const AgentView: React.FC = () => {
                            existingStep.progress || 0
                 };
               });
-              console.log(`✅ PENTEST-SESSIONS: ${steps.length} outils existants conservés et mis à jour`);
             } else if (session.tools && session.tools.length > 0) {
               // Cas 2: Première fois avec session.tools
               steps = session.tools.map((tool: any, index: number) => ({
@@ -577,7 +535,6 @@ const AgentView: React.FC = () => {
                 duration: session.results?.[tool.name || tool.toolName]?.duration,
                 progress: session.results?.[tool.name || tool.toolName] ? 100 : 0
               }));
-              console.log(`✅ PENTEST-SESSIONS: ${steps.length} outils créés depuis session.tools`);
             } else if (session.executionSteps && session.executionSteps.length > 0) {
               // Cas 3: Première fois avec session.executionSteps
               steps = session.executionSteps.map((step: any, index: number) => ({
@@ -590,7 +547,6 @@ const AgentView: React.FC = () => {
                 duration: step.duration,
                 progress: step.status === 'completed' ? 100 : step.status === 'running' ? 50 : 0
               }));
-              console.log(`✅ PENTEST-SESSIONS: ${steps.length} outils créés depuis executionSteps`);
             } else {
               // Cas 4: Fallback - créer les outils par défaut
               const defaultTools = ['nmap', 'masscan', 'sqlmap', 'shennina'];
@@ -601,7 +557,6 @@ const AgentView: React.FC = () => {
                 status: 'pending',
                 progress: 0
               }));
-              console.log(`⚠️ PENTEST-SESSIONS: ${steps.length} outils par défaut créés`);
             }
             
             const newSessionData = {
@@ -614,11 +569,9 @@ const AgentView: React.FC = () => {
             
             // ✅ Comparer avec la session précédente pour éviter re-renders inutiles
             if (prev[sessionId] && JSON.stringify(prev[sessionId]) === JSON.stringify(newSessionData)) {
-              console.log(`🔄 No changes in session ${sessionId}, skipping update`);
               return prev;
             }
             
-            console.log(`🔄 Session ${sessionId} updated with new data`);
             return {
               ...prev,
               [sessionId]: newSessionData
@@ -643,25 +596,12 @@ const AgentView: React.FC = () => {
           
           // Si c'est la session courante, la mettre à jour avec comparaison
           if (currentSession?.id === sessionId) {
-            console.log(`🔄 REFRESH SESSION: Updating current session ${sessionId}`, {
-              sessionId,
-              source: 'refreshSessionStatus - currentSession update',
-              timestamp: new Date().toISOString()
-            });
             
             setCurrentSession(prev => {
               if (!prev) {
-                console.log(`❌ NO PREVIOUS SESSION to update`);
                 return null;
               }
               
-              console.log(`🔍 REFRESH SESSION - Backend data:`, {
-                sessionId,
-                backendTools: session.tools?.length || 0,
-                backendExecutionSteps: session.executionSteps?.length || 0,
-                previousSteps: prev.steps?.length || 0,
-                source: 'refreshSessionStatus - backend data inspection'
-              });
           
           // ✅ PRIORITÉ 1: Toujours conserver les steps existants si on en a
           let steps = [];
@@ -686,11 +626,6 @@ const AgentView: React.FC = () => {
                          existingStep.progress || 0
               };
             });
-            console.log(`✅ REFRESH SESSION - CASE 1: Updating ${steps.length} existing steps`, {
-              sessionId,
-              stepsCount: steps.length,
-              source: 'refreshSessionStatus - existing steps update'
-            });
           } else if (session.tools && session.tools.length > 0) {
             // Cas 2: Première fois avec session.tools
             steps = session.tools.map((tool: any, index: number) => ({
@@ -703,11 +638,6 @@ const AgentView: React.FC = () => {
                 duration: session.results?.[tool.name || tool.toolName]?.duration,
               progress: session.results?.[tool.name || tool.toolName] ? 100 : 0
             }));
-            console.log(`✅ REFRESH SESSION - CASE 2: Creating ${steps.length} steps from session.tools`, {
-              sessionId,
-              stepsCount: steps.length,
-              source: 'refreshSessionStatus - session.tools'
-            });
           } else if (session.executionSteps && session.executionSteps.length > 0) {
             // Cas 3: Première fois avec session.executionSteps
             steps = session.executionSteps.map((step: any, index: number) => ({
@@ -720,11 +650,6 @@ const AgentView: React.FC = () => {
               duration: step.duration,
               progress: step.status === 'completed' ? 100 : step.status === 'running' ? 50 : 0
             }));
-            console.log(`✅ REFRESH SESSION - CASE 3: Creating ${steps.length} steps from executionSteps`, {
-              sessionId,
-              stepsCount: steps.length,
-              source: 'refreshSessionStatus - executionSteps'
-            });
           } else {
             // Cas 4: Fallback - créer les outils par défaut
             const defaultTools = ['nmap', 'masscan', 'sqlmap', 'shennina'];
@@ -735,11 +660,6 @@ const AgentView: React.FC = () => {
               status: 'pending',
               progress: 0
             }));
-            console.log(`⚠️ REFRESH SESSION - CASE 4: Creating ${steps.length} default steps (fallback)`, {
-              sessionId,
-              stepsCount: steps.length,
-              source: 'refreshSessionStatus - fallback'
-            });
           }
           
           const newCurrentSession = {
@@ -748,25 +668,16 @@ const AgentView: React.FC = () => {
             steps: steps
           };
           
-          console.log(`🔢 REFRESH SESSION - Final steps count: ${steps.length}`, {
-            sessionId,
-            stepsCount: steps.length,
-            steps: steps.map((s: any) => ({ tool: s.tool, status: s.status })),
-            source: 'refreshSessionStatus - final newCurrentSession creation'
-          });
               
               // ✅ Comparer avec la session courante précédente
               if (JSON.stringify(prev) === JSON.stringify(newCurrentSession)) {
-                console.log(`🔄 REFRESH SESSION - No changes detected, keeping previous session`);
                 return prev;
               }
               
-              console.log(`🔄 REFRESH SESSION - Changes detected, updating session with ${steps.length} steps`);
               return newCurrentSession;
             });
           }
           
-          console.log(`🔄 Session ${sessionId} status updated: ${session.status}`);
         }
       }
     } catch (error) {
@@ -786,18 +697,15 @@ const AgentView: React.FC = () => {
     if (currentView === 'pipeline') {
       // ✅ TEMPS RÉEL pour vue pipeline: polling toutes les 2 secondes
       interval = setInterval(async () => {
-        console.log('🔄 Pipeline real-time update check...');
         
         // Vérifier s'il y a une session courante
         if (currentSession) {
-          console.log(`🔄 Refreshing session ${currentSession.id}`);
           await refreshSessionStatus(currentSession.id);
         }
         
         // Vérifier toutes les sessions actives des conversations
         for (const conv of conversations) {
           if (conv.pentestSession && conv.pentestSession.status === 'executing') {
-            console.log(`🔄 Refreshing conversation session ${conv.pentestSession.sessionId}`);
             await refreshSessionStatus(conv.pentestSession.sessionId);
           }
         }
@@ -808,12 +716,10 @@ const AgentView: React.FC = () => {
         (window as any).pollCount = pollCount + 1;
         
         if (pollCount % 10 === 0) {
-          console.log('🔄 Full sessions reload (every 20s)');
         await loadPentestSessions();
         }
       }, 2000); // ✅ 2 secondes pour temps réel
       
-      console.log('⚡ Pipeline real-time polling started (2s interval)');
     } else {
       // ✅ Mode normal pour autres vues: polling plus lent
       interval = setInterval(async () => {
@@ -823,7 +729,6 @@ const AgentView: React.FC = () => {
         );
         
         if (hasActiveSessions) {
-          console.log('🔄 Background update for active sessions');
           for (const conv of conversations) {
             if (conv.pentestSession && conv.pentestSession.status === 'executing') {
               await refreshSessionStatus(conv.pentestSession.sessionId);
@@ -832,13 +737,11 @@ const AgentView: React.FC = () => {
         }
       }, 15000); // 15 secondes en arrière-plan
       
-      console.log('📡 Background polling started (15s interval)');
     }
 
     return () => {
       if (interval) {
         clearInterval(interval);
-        console.log('🛑 Polling stopped');
       }
     };
   }, [currentView, refreshSessionStatus, loadPentestSessions, currentSession, conversations]); // ✅ Ajouter toutes les dépendances stables
@@ -1281,14 +1184,11 @@ const AgentView: React.FC = () => {
   };
 
   const switchConversation = (conversationId: string) => {
-    console.log(`🔄 Switching conversation from ${currentConversationId} to ${conversationId}`);
     
     // ✅ NE PAS vider currentSession si on reste sur la même conversation
     if (currentConversationId !== conversationId) {
-      console.log(`🔄 Different conversation, clearing current session`);
     setCurrentSession(null);
     } else {
-      console.log(`🔄 Same conversation, keeping current session`);
     }
     
     setCurrentConversationId(conversationId);
@@ -1312,7 +1212,6 @@ const AgentView: React.FC = () => {
     const conversationToDelete = conversations.find(conv => conv.id === conversationId);
     if (conversationToDelete?.pentestSession?.sessionId) {
       const sessionId = conversationToDelete.pentestSession.sessionId;
-      console.log(`🗑️ Cleaning up pentest session ${sessionId} for deleted conversation ${conversationId}`);
       
       // Supprimer de pentestSessions
       setPentestSessions(prev => {
@@ -1323,7 +1222,6 @@ const AgentView: React.FC = () => {
       
       // Si c'est la session courante, la vider
       if (currentSession?.id === sessionId) {
-        console.log(`🗑️ Clearing current session ${sessionId}`);
         setCurrentSession(null);
       }
     }
@@ -1412,7 +1310,6 @@ const AgentView: React.FC = () => {
       );
       
       if (isDuplicate) {
-        console.log('🚫 Duplicate message prevented:', content.substring(0, 50) + '...');
         return;
       }
     }
@@ -1528,12 +1425,9 @@ const AgentView: React.FC = () => {
               : conv
           ));
           
-          console.log(`✅ Chat history loaded for conversation ${conversationId}: ${messagesWithDates.length} messages`);
           if (data.pentestSession) {
-            console.log(`🔗 Pentest session linked: ${data.pentestSession.id} (${data.pentestSession.status})`);
           }
         } else {
-          console.log(`ℹ️ No chat history found for conversation ${conversationId}`);
         }
       } else {
         console.warn(`Failed to load chat history for ${conversationId}:`, response.status);
@@ -1649,7 +1543,6 @@ const AgentView: React.FC = () => {
             : conv
         ));
         
-        console.log(`🚀 Pentest session started: ${data.pentestSession} for conversation ${currentConversation.id}`);
         addChatMessage(`✅ Pentest session ${data.pentestSession} created and running on ${data.target}`, true, 'pentest-started');
         
         // Visual indicator in chat before switch
@@ -1708,7 +1601,6 @@ const AgentView: React.FC = () => {
     });
 
     if (hasExactDuplicate) {
-      console.log(`🚫 Exact duplicate message prevented for ${toolName} (${status}) within 5 seconds`);
       return;
     }
 
@@ -1849,14 +1741,12 @@ const AgentView: React.FC = () => {
         // Add the response message with pentest info
         addMessageToConversation(conversationId, data.response, true, 'pentest-started');
         
-        console.log(`🚀 Pentest session started: ${data.pentestSession} for conversation ${conversationId}`);
         
         // ✅ Switch automatiquement vers Pipeline après 3 secondes
         // ✅ Initialize the pipeline session IMMEDIATELY to avoid 0/0 display
         initializePipelineSession(data.pentestSession, data.target, data.tools || []);
         
         setTimeout(() => {
-          console.log('🔄 Auto-switching to pipeline view for pentest monitoring');
           switchView('pipeline');
         }, 3000);
       } else {
@@ -2048,7 +1938,6 @@ Please specify a target (IP, domain, or URL) to launch the automated pentest.
     
     try {
       const token = localStorage.getItem('token');
-      console.log('🔍 Generating report for session:', currentSession.id);
       
       const response = await fetch(`/api/agents/session/${currentSession.id}/report`, {
         method: 'POST',
@@ -2066,7 +1955,6 @@ Please specify a target (IP, domain, or URL) to launch the automated pentest.
         })
       });
 
-      console.log('📡 Report generation response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -2075,7 +1963,6 @@ Please specify a target (IP, domain, or URL) to launch the automated pentest.
       }
 
       const data = await response.json();
-      console.log('📊 Report generation response:', data);
       
       if (data.success) {
         const report = data.report;
@@ -2159,7 +2046,6 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyze 
     
     try {
       const token = localStorage.getItem('token');
-      console.log('🔍 Exporting session data for:', currentSession.id);
       
       const response = await fetch(`/api/agents/session/${currentSession.id}/export`, {
         method: 'GET',
@@ -2168,7 +2054,6 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyze 
         }
       });
 
-      console.log('📡 Export response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -2177,7 +2062,6 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyze 
       }
 
       const data = await response.json();
-      console.log('📁 Export data received:', data);
       
       // Créer un fichier de téléchargement
       const exportBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2245,13 +2129,6 @@ Contains all session data for external analysis.`, true, 'success');
 
   // Fonction pour initialiser la session pipeline avec mises à jour en temps réel
   const initializePipelineSession = (sessionId: string, target: string, tools: string[]) => {
-    console.log(`🚀 INITIALIZE PIPELINE SESSION: ${sessionId} with ${tools.length} tools`, {
-      sessionId,
-      target,
-      tools,
-      source: 'initializePipelineSession',
-      timestamp: new Date().toISOString()
-    });
     
     // ✅ Créer une session temporaire immédiatement pour éviter l'affichage "0 tools"
     const steps: ExecutionStep[] = tools.map((toolName, index) => ({
@@ -2276,19 +2153,11 @@ Contains all session data for external analysis.`, true, 'success');
       }
     };
 
-    console.log(`🔢 INITIALIZING WITH ${steps.length} STEPS:`, {
-      sessionId,
-      stepsCount: steps.length,
-      steps: steps.map(s => ({ tool: s.tool, status: s.status })),
-      source: 'initializePipelineSession - setCurrentSession call',
-      timestamp: new Date().toISOString()
-    });
 
     setCurrentSession(session);
     
     // ✅ Synchroniser immédiatement avec le backend pour obtenir les vraies données
     setTimeout(async () => {
-      console.log(`🔄 Syncing pipeline session ${sessionId} with backend...`);
       await refreshSessionStatus(sessionId);
     }, 500);
     
@@ -2300,7 +2169,6 @@ Contains all session data for external analysis.`, true, 'success');
   const startPipelineUpdates = (sessionId: string) => {
     // Listen for WebSocket events for this session
     // Note: WebSocket functionality would be implemented separately
-    console.log(`📡 Starting pipeline updates for session ${sessionId}`);
     
     // Polling alternative for real-time updates
     const pollInterval = setInterval(async () => {
@@ -2328,7 +2196,6 @@ Contains all session data for external analysis.`, true, 'success');
 
   // Fonction pour mettre à jour la session depuis les données de polling - AMÉLIORATION TEMPS RÉEL
   const updateSessionFromPoll = (sessionId: string, sessionData: any) => {
-    console.log(`🔄 Updating session ${sessionId} from poll:`, sessionData);
     
     setCurrentSession(prev => {
       if (!prev || prev.id !== sessionId) return prev;
@@ -2370,7 +2237,6 @@ Contains all session data for external analysis.`, true, 'success');
         newStatus = 'completed';
       }
 
-      console.log(`📊 Session ${sessionId} summary:`, summary, 'Status:', newStatus);
 
       return {
         ...prev,
@@ -2413,7 +2279,6 @@ Contains all session data for external analysis.`, true, 'success');
         // Seulement notifier les nouveaux changements de statut
         const prevStep = currentSession?.steps.find(s => s.tool === step.tool);
         if (!prevStep || prevStep.status !== step.status) {
-          console.log(`📝 New status for ${step.tool}: ${step.status}`);
           updateChatWithPentestProgress(sessionId, step.tool, step.status, step.output, step.error);
         }
       });
@@ -2429,7 +2294,6 @@ Contains all session data for external analysis.`, true, 'success');
         );
         
         if (!hasReportMessage) {
-          console.log(`📊 Adding report notification for session ${sessionId}`);
           addMessageToConversation(currentConv.id, 
             '📊 **Security Report Generated!** Your comprehensive penetration testing report is now ready for review.', 
             true, 'success'
@@ -3030,15 +2894,6 @@ Contains all session data for external analysis.`, true, 'success');
                         {(() => {
                           const completed = currentSession.steps ? currentSession.steps.filter(s => s.status === 'completed').length : 0;
                           const total = currentSession.steps ? currentSession.steps.length : 0;
-                          console.log(`🔢 PIPELINE COUNTER DISPLAY: ${completed}/${total} tools completed`, {
-                            sessionId: currentSession.id,
-                            stepsCount: currentSession.steps?.length || 0,
-                            completedCount: completed,
-                            totalCount: total,
-                            steps: currentSession.steps?.map(s => ({ tool: s.tool, status: s.status })) || [],
-                            source: 'Pipeline Header Display',
-                            timestamp: new Date().toISOString()
-                          });
                           return `${completed}/${total} tools completed`;
                         })()}
                       </div>

@@ -36,7 +36,6 @@ class ScenarioTerminalService {
     // CORRECTIF: Désactiver temporairement les listeners du ScenarioTerminalService
     // pour éviter les duplications avec useScenarioTerminal
     // Tous les messages sont maintenant traités uniquement dans useScenarioTerminal
-    console.log('[SCENARIO-TERMINAL-SERVICE] WebSocket listeners disabled to prevent duplication');
     
     /* LISTENERS DÉSACTIVÉS POUR ÉVITER LA DUPLICATION
     websocket.on('terminal-output', (data: {
@@ -225,7 +224,6 @@ class ScenarioTerminalService {
         const parsed = JSON.parse(stored);
         // Vérifier que l'état n'est pas trop ancien (max 1 heure)
         if (parsed.lastSaved && Date.now() - parsed.lastSaved < 3600000) {
-          console.log(`[PERSISTENCE] Restored terminal state for ${scenarioId}:${terminalId}`, parsed.state);
           return parsed.state;
         }
       }

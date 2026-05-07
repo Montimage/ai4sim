@@ -86,8 +86,7 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
 
         // Find associated conversation and add message
         // Note: This would need the conversation hooks to find the right conversation
-        console.log('Report generated:', reportMessage);
-        
+
         // Créer un lien de téléchargement pour le rapport complet
         const reportBlob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
         const reportUrl = URL.createObjectURL(reportBlob);
@@ -96,38 +95,28 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
         reportLink.download = `mmt-pentester-rapport-${currentSession.target}-${new Date().toISOString()}.json`;
         reportLink.click();
         URL.revokeObjectURL(reportUrl);
-        
-        console.log(`📁 **Rapport téléchargé !** Fichier : \`mmt-pentester-rapport-${currentSession.target}-${new Date().toISOString()}.json\``);
       } else {
         console.error('❌ Report generation failed:', data);
-        console.log(`❌ **Erreur lors de la génération du rapport**: ${data.error || 'Erreur inconnue'}`);
       }
     } catch (error) {
       console.error('❌ Error generating report:', error);
-      console.log(`❌ **Erreur lors de la génération du rapport**: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 
   const exportSessionData = async () => {
     if (!currentSession) {
-      console.log('❌ Aucune session active pour exporter.');
       return;
     }
-    
-    console.log('📁 **Export des données en cours...**');
-    
+
     try {
       const token = localStorage.getItem('token');
-      console.log('🔍 Exporting session data for:', currentSession.id);
-      
+
       const response = await fetch(`/api/agents/session/${currentSession.id}/export`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
-      console.log('📡 Export response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -136,8 +125,7 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
       }
 
       const data = await response.json();
-      console.log('📁 Export data received:', data);
-      
+
       // Créer un fichier de téléchargement
       const exportBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const exportUrl = URL.createObjectURL(exportBlob);
@@ -146,14 +134,8 @@ ${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser
       exportLink.download = `pentest-session-${currentSession.id}.json`;
       exportLink.click();
       URL.revokeObjectURL(exportUrl);
-      
-      console.log(`📁 **Données de session exportées !**
-
-Fichier téléchargé : \`pentest-session-${currentSession.id}.json\`
-Contient toutes les données de la session pour analyse externe.`);
     } catch (error) {
       console.error('❌ Error exporting session:', error);
-      console.log(`❌ **Erreur lors de l'export**: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 

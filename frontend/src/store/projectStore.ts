@@ -102,29 +102,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     
     // 1. Vérifier si une requête est déjà en cours
     if (state.fetchInProgress) {
-      console.log('⏳ ProjectStore: Une requête est déjà en cours, attente...');
       // Attendre que la requête en cours soit terminée
       // On retourne les projets actuels, la mise à jour sera visible après
       return state.projects;
     }
-    
+
     // 2. Vérifier si les projets sont déjà en cache et si le cache est encore valide
     if (
-      state.projects.length > 0 && 
+      state.projects.length > 0 &&
       currentTime - state.lastFetchTime < state.cacheDuration
     ) {
-      console.log('📋 ProjectStore: Utilisation des projets en cache, dernière mise à jour il y a ' + 
-        Math.floor((currentTime - state.lastFetchTime) / 1000) + ' secondes');
       return state.projects;
     }
-    
+
     try {
       // Activer le verrou pour éviter les appels simultanés
       set({ fetchInProgress: true, isLoading: true, error: null });
-      console.log('🔒 ProjectStore: Verrou activé, récupération des projets...');
-      
+
       const projects = await projectService.getProjects();
-      console.log('✅ ProjectStore: Projets récupérés avec succès:', projects);
       
       // Mettre à jour le cache
       set({ 
@@ -148,11 +143,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   fetchProject: async (projectId: string) => {
     set({ isLoading: true, error: null });
-    
+
     try {
-      console.log(`📥 ProjectStore: Récupération du projet ${projectId}...`);
       const project = await projectService.getProject(projectId);
-      
+
       set(state => {
         const updatedProjects = [...state.projects];
         const index = updatedProjects.findIndex(p => p._id === projectId);
@@ -170,7 +164,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         };
       });
       
-      console.log('✅ ProjectStore: Projet récupéré avec succès:', project.name);
       return project;
     } catch (err) {
       const error = err as ApiError;
@@ -183,7 +176,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ error: errorMessage, isLoading: false });
       
       if (error.response?.status === 404) {
-        console.log('🔄 Suppression de l\'ID du projet du stockage car introuvable');
         await storage.removeItem(SELECTED_PROJECT_KEY);
         set({ currentProject: null });
       }
@@ -197,13 +189,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     
     // Vérifier si le projet est déjà chargé et si c'est le bon
     if (state.currentProject && state.currentProject._id === projectId) {
-      console.log('⏩ ProjectStore: Projet déjà sélectionné, aucune requête supplémentaire nécessaire');
       return state.currentProject;
     }
-    
+
     // Vérifier si une sélection pour ce projet est déjà en cours
     if (state.projectSelectionInProgress[projectId]) {
-      console.log('⏳ ProjectStore: Une sélection pour ce projet est déjà en cours, attente...');
       
       // Créer une promesse qui se résoudra quand le projet sera chargé
       return new Promise<Project>((resolve, reject) => {
@@ -229,8 +219,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
     
     try {
-      console.log('🎯 ProjectStore: Sélection directe du projet:', projectId);
-      
       // Marquer cette sélection comme en cours
       set(state => ({
         ...state,
@@ -243,14 +231,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }));
       
       // Récupération directe depuis le serveur, sans vérifier le cache
-      console.log('🔍 ProjectStore: Récupération du projet depuis le serveur:', projectId);
       const project = await projectService.getProject(projectId);
       
       if (!project) {
         throw new Error('Projet introuvable');
       }
-      
-      console.log('✅ ProjectStore: Projet récupéré avec succès depuis le serveur:', project.name);
       
       // Mise à jour du store avec les données fraîches
       set(state => {
@@ -280,8 +265,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       
       // Sauvegarder l'ID du projet sélectionné
       await storage.setItem(SELECTED_PROJECT_KEY, projectId);
-      
-      console.log('💾 ProjectStore: ID du projet sauvegardé dans le stockage local:', projectId);
+
       return project;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération du projet:', error);
@@ -455,23 +439,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         updatedAt: new Date()
       };
       
-      console.log('⏳ ProjectStore: Envoi de la nouvelle campagne au serveur:', campaignWithScenarios);
       let updatedProject = await projectService.addCampaignToProject(
         currentProject._id,
         campaignWithScenarios
       );
-      
-      console.log('✅ ProjectStore: Projet mis à jour avec la nouvelle campagne:', updatedProject);
-      console.log('📊 Campagnes dans le projet mis à jour:', updatedProject.campaigns?.length || 0);
-      
+
       // Le serveur peut retourner un projet sans la nouvelle campagne (bug backend)
       // Dans ce cas, récupérons manuellement le projet à jour avec une requête supplémentaire
       if (!updatedProject.campaigns || updatedProject.campaigns.length === 0) {
-        console.error('❌ ProjectStore: La campagne n’a pas été renvoyée par le backend, tentative de récupération manuelle...');
+        console.error(‘❌ ProjectStore: La campagne n\’a pas été renvoyée par le backend, tentative de récupération manuelle...’);
         try {
           updatedProject = await projectService.getProject(currentProject._id);
-          console.log('🔄 ProjectStore: Projet récupéré manuellement:', updatedProject);
-          console.log('📊 Campagnes après récupération manuelle:', updatedProject.campaigns?.length || 0);
         } catch (error) {
           set({ error: "Erreur lors de la récupération du projet après création de campagne.", isLoading: false });
           throw new Error("Erreur lors de la récupération du projet après création de campagne.");
@@ -489,19 +467,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
       
       set(state => {
-        const updatedProjects = state.projects.map((p: Project) => 
+        const updatedProjects = state.projects.map((p: Project) =>
           p._id === currentProject._id ? updatedProject : p
         );
-        
-        console.log('🔄 ProjectStore: Mise à jour du state avec le projet contenant la nouvelle campagne');
-        
+
         return {
           projects: updatedProjects,
           currentProject: updatedProject,
           isLoading: false
         };
       });
-      
+
       return updatedProject;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to add campaign';
@@ -673,7 +649,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const savedProjectId = await storage.getItem(SELECTED_PROJECT_KEY);
       if (savedProjectId && typeof savedProjectId === 'string') {
-        console.log('🔄 ProjectStore: Tentative de chargement du projet sauvegardé:', savedProjectId);
         try {
           const project = await get().selectProject(savedProjectId);
           return project;

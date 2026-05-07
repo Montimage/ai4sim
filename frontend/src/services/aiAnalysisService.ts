@@ -76,7 +76,6 @@ class AIAnalysisService {
           }
         });
         
-        console.log(`Loaded ${this.cache.size} cached AI analyses from storage`);
       }
     } catch (error) {
       console.warn('Failed to load AI analysis cache from storage:', error);
@@ -100,7 +99,6 @@ class AIAnalysisService {
       });
       
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheToSave));
-      console.log(`Saved ${this.cache.size} AI analyses to storage`);
     } catch (error) {
       console.warn('Failed to save AI analysis cache to storage:', error);
     }
@@ -142,7 +140,6 @@ class AIAnalysisService {
     
     const cachedAnalysis = this.getFromCache(cacheKey);
     if (cachedAnalysis) {
-      console.log(`✅ Using cached AI analysis for execution ${execution.id} (includeWazuh: ${includeWazuh}) - Cache size: ${this.cache.size} entries`);
       // Ensure provider and model are up-to-date if they were 'error-fallback'
       if (cachedAnalysis.model === 'error-fallback' || cachedAnalysis.model === 'fallback') {
         cachedAnalysis.provider = useAISettingsStore.getState().settings.provider;
@@ -150,7 +147,6 @@ class AIAnalysisService {
       return cachedAnalysis;
     }
 
-    console.log(`🔄 Generating new AI analysis for execution ${execution.id} (includeWazuh: ${includeWazuh}) - Cache size: ${this.cache.size} entries`);
     let wazuhMetrics: WazuhSecurityMetrics | null = null;
 
     try {
@@ -243,10 +239,8 @@ class AIAnalysisService {
     // Essayer chaque modèle en séquence
     for (const model of fallbackModels) {
       try {
-        console.log(`Trying OpenRouter model: ${model}`);
         const result = await this.tryOpenRouterModel(prompt, settings, model);
         if (result) {
-          console.log(`Success with model: ${model}`);
           return result;
         }
       } catch (error) {
@@ -255,12 +249,11 @@ class AIAnalysisService {
         
         // Si c'est une erreur d'autorisation ou de quota, arrêter les tentatives
         if (error instanceof Error && (
-          error.message.includes('401') || 
-          error.message.includes('403') || 
+          error.message.includes('401') ||
+          error.message.includes('403') ||
           error.message.includes('quota') ||
           error.message.includes('Unauthorized')
         )) {
-          console.log('Authorization/quota error detected, stopping fallback attempts');
           break;
         }
       }
@@ -370,8 +363,7 @@ Enrich your analysis with technical details, context, and actionable insights. A
       }
 
       const data = await response.json();
-      console.log('OpenRouter raw response:', data);
-      
+
       // Vérifier la structure de la réponse
       if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
         console.error('Invalid OpenRouter response structure:', data);
@@ -409,9 +401,6 @@ Enrich your analysis with technical details, context, and actionable insights. A
   }
 
   private async analyzeWithOllama(prompt: string, settings: any): Promise<{text: string, model: string}> {
-    console.log('Ollama analysis starting with model:', settings.ollama.selectedModel);
-    console.log('Ollama URL:', settings.ollama.baseUrl);
-    
     // Create an AbortController for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -452,8 +441,6 @@ Enrich your analysis with technical details, context, and actionable insights. A
       }
 
       const data = await response.json();
-      console.log('Ollama response received successfully');
-      
       const analysisText = data.response || '';
       
       if (!analysisText) {
@@ -643,11 +630,6 @@ Example correct format:
   }
 
   private parseEnhancedAnalysisResponse(analysisText: string, execution: ExecutionRecord, wazuhMetrics?: WazuhSecurityMetrics | null): AIAnalysisResult {
-    console.log('🔍 [DEBUG] Raw AI response:', analysisText);
-    console.log('🔍 [DEBUG] Response length:', analysisText.length);
-    console.log('🔍 [DEBUG] First 500 chars:', analysisText.substring(0, 500));
-    console.log('🔍 [DEBUG] Last 500 chars:', analysisText.substring(Math.max(0, analysisText.length - 500)));
-    
     // Try to extract JSON from the response
     let jsonString = analysisText.trim();
     
@@ -656,21 +638,14 @@ Example correct format:
       const jsonMatch = jsonString.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
       if (jsonMatch) {
         jsonString = jsonMatch[1].trim();
-        console.log('🔍 [DEBUG] Extracted from markdown:', jsonString);
       }
     }
-
-    console.log('🔍 [DEBUG] Attempting to parse JSON:', jsonString);
 
     try {
       // Try direct parsing first
       const parsed = JSON.parse(jsonString);
-      console.log('✅ [DEBUG] Direct JSON parse successful:', parsed);
       return this.validateAndProcessAnalysis(parsed, execution);
     } catch (directError) {
-      console.log('❌ [DEBUG] Direct parse failed:', directError);
-      console.log('🔄 [DEBUG] Trying balanced JSON extraction...');
-      
       // Try to find balanced JSON
       const findBalancedJson = (text: string): string | null => {
         let braceCount = 0;
@@ -683,9 +658,7 @@ Example correct format:
           } else if (text[i] === '}') {
             braceCount--;
             if (braceCount === 0 && start !== -1) {
-              const extracted = text.substring(start, i + 1);
-              console.log('🔍 [DEBUG] Balanced JSON found:', extracted);
-              return extracted;
+              return text.substring(start, i + 1);
             }
           }
         }
@@ -696,27 +669,18 @@ Example correct format:
       if (balancedJson) {
         try {
           const parsed = JSON.parse(balancedJson);
-          console.log('✅ [DEBUG] Balanced JSON parse successful:', parsed);
           return this.validateAndProcessAnalysis(parsed, execution);
         } catch (balancedError) {
-          console.log('❌ [DEBUG] Balanced JSON parse failed:', balancedError);
+          // continue to repair
         }
       }
 
-      console.log('🔧 [DEBUG] Trying JSON repair...');
-      
       // Try to repair the JSON
       try {
         const repairedJson = this.repairMalformedJson(jsonString);
-        console.log('🔍 [DEBUG] Repaired JSON:', repairedJson);
-        
         const parsed = JSON.parse(repairedJson);
-        console.log('✅ [DEBUG] Repaired JSON parse successful:', parsed);
         return this.validateAndProcessAnalysis(parsed, execution);
       } catch (repairError) {
-        console.log('❌ [DEBUG] Repaired JSON parse failed:', repairError);
-        console.log('🚨 [DEBUG] Using fallback analysis...');
-        
         // Create fallback analysis
         return this.createBasicErrorAnalysis(
           execution, 
@@ -865,12 +829,6 @@ Example correct format:
     // Nettoyer les espaces multiples
     repaired = repaired.replace(/\s+/g, ' ');
     
-    console.log('🔧 JSON repair attempt:', {
-      original: jsonString.substring(0, 300) + (jsonString.length > 300 ? '...' : ''),
-      repaired: repaired.substring(0, 300) + (repaired.length > 300 ? '...' : ''),
-      changes: jsonString !== repaired ? 'Applied fixes' : 'No changes needed'
-    });
-    
     return repaired;
   }
 
@@ -949,7 +907,6 @@ Example correct format:
     this.cache.clear();
     this.currentCacheSize = 0;
     this.saveCacheToStorage();
-    console.log('AI Analysis cache cleared');
   }
 
   // Nouvelle méthode pour invalider le cache d'une exécution spécifique
@@ -960,8 +917,6 @@ Example correct format:
     
     keysToDelete.forEach(key => this.cache.delete(key));
     this.saveCacheToStorage();
-    
-    console.log(`Invalidated cache for execution ${executionId} (${keysToDelete.length} entries)`);
   }
 
   /**
@@ -970,7 +925,6 @@ Example correct format:
   invalidateAllCache(): void {
     this.cache.clear();
     localStorage.removeItem(this.CACHE_KEY);
-    console.log('All AI analysis cache invalidated due to improvements');
   }
 
   /**
@@ -982,7 +936,6 @@ Example correct format:
     localStorage.removeItem('ai-analysis-improvements-version');
     localStorage.removeItem('ai-analysis-last-check');
     this.improvementsChecked = false;
-    console.log('🗑️ Cache forcibly invalidated and improvement checks reset');
   }
 
   /**
@@ -1015,8 +968,6 @@ Example correct format:
 
   // Méthode de test pour les patterns courants
   testCommonPatterns(): void {
-    console.log('🧪 Testing common malformed JSON patterns...');
-    
     const testCases = [
       {
         name: 'OpenRouter pattern: missing colons',
@@ -1033,14 +984,7 @@ Example correct format:
     ];
 
     testCases.forEach(testCase => {
-      console.log(`\n📝 Testing: ${testCase.name}`);
-      const result = this.testJsonParsing(testCase.json);
-      console.log(`✅ Success: ${result.success}`);
-      if (result.success && result.repaired) {
-        console.log('🔧 Repair was needed and successful');
-      } else if (!result.success) {
-        console.log(`❌ Failed: ${result.error}`);
-      }
+      this.testJsonParsing(testCase.json);
     });
   }
 
@@ -1126,21 +1070,17 @@ Example correct format:
     const lastVersion = localStorage.getItem('ai-analysis-improvements-version');
     const lastCheck = localStorage.getItem('ai-analysis-last-check');
     const now = Date.now();
-    
+
     // Ne vérifier qu'une fois par heure maximum
     if (lastCheck && (now - parseInt(lastCheck)) < 60 * 60 * 1000) {
-      console.log('AI Analysis improvements check skipped (checked recently)');
       return;
     }
-    
+
     if (lastVersion !== IMPROVEMENTS_VERSION) {
-      console.log(`AI Analysis improvements detected (v${lastVersion} → v${IMPROVEMENTS_VERSION}). Invalidating cache...`);
       this.invalidateAllCache();
       localStorage.setItem('ai-analysis-improvements-version', IMPROVEMENTS_VERSION);
-    } else {
-      console.log(`AI Analysis version ${IMPROVEMENTS_VERSION} already applied, cache preserved`);
     }
-    
+
     // Marquer la dernière vérification
     localStorage.setItem('ai-analysis-last-check', now.toString());
   }
@@ -1344,9 +1284,6 @@ Example correct format:
       }
     });
 
-    if (entriesToDelete.length > 0) {
-      console.log(`Cache cleanup: removed ${entriesToDelete.length} entries, current size: ${this.formatBytes(this.currentCacheSize)}`);
-    }
   }
 
   private formatBytes(bytes: number): string {

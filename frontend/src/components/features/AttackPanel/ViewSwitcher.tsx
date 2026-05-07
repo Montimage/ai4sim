@@ -39,9 +39,6 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({ tabId, children }) =
   const isIframeReady = tabState?.iframeReady || false;
   const isRunning = tabState?.status === 'running' || tabState?.isRunning;
   
-  // Debug logs
-  console.log(`🔍 [ViewSwitcher] State - tabId: ${tabId}, tool: ${selectedTool?.name}, isIframeReady: ${isIframeReady}, isRunning: ${isRunning}, status: ${tabState?.status}`);
-  
   // Déterminer le port de l'iframe à utiliser
   const getIframePort = () => {
     if (selectedTool?.sequentialExecution?.enabled && selectedTool.sequentialExecution.finalIframe) {
@@ -68,7 +65,6 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({ tabId, children }) =
       const separator = currentSrc.includes('?') ? '&' : '?';
       const newSrc = `${currentSrc}${separator}refresh=${Date.now()}`;
       iframeRef.current.src = newSrc;
-      console.log(`🔄 Iframe refreshed for ${selectedTool?.name} - Manual refresh`);
     }
   }, [selectedTool?.name]);
 
@@ -83,29 +79,22 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({ tabId, children }) =
 
   // Basculer automatiquement vers l'iframe quand elle est vraiment prête - SEULEMENT LA PREMIÈRE FOIS
   useEffect(() => {
-    console.log(`🔍 [ViewSwitcher] Effect triggered - showIframeOption: ${showIframeOption}, viewMode: ${viewMode}, isIframeReady: ${isIframeReady}`);
-    
     if (showIframeOption && viewMode === 'terminal') {
       // Basculer automatiquement seulement si c'est la première fois que l'iframe devient disponible
       // et que l'utilisateur n'a pas encore interagi avec les boutons
       const hasUserInteracted = sessionStorage.getItem(`viewSwitcher-${tabId}-userInteracted`);
-      console.log(`🔍 [ViewSwitcher] hasUserInteracted: ${hasUserInteracted}, tool: ${selectedTool?.name}`);
-      
+
       if (!hasUserInteracted) {
         // Attendre 2 secondes avant de basculer automatiquement vers l'iframe
         // pour donner le temps aux services de s'initialiser correctement
-        console.log(`⏳ Waiting 2 seconds before switching to interface for ${selectedTool?.name}`);
         const timer = setTimeout(() => {
-          console.log(`🔄 AUTO-SWITCHING to interface for ${selectedTool?.name} after delay`);
           setViewMode('iframe');
           saveViewMode('iframe');
           sessionStorage.setItem(`viewSwitcher-${tabId}-userInteracted`, 'true');
         }, 2000);
-        
+
         // Nettoyer le timer si le composant est démonté ou si l'état change
         return () => clearTimeout(timer);
-      } else {
-        console.log(`🔍 [ViewSwitcher] User already interacted, skipping auto-switch`);
       }
     }
   }, [showIframeOption, tabId, selectedTool?.name]);
@@ -259,9 +248,6 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({ tabId, children }) =
                 title={`${selectedTool?.name} Interface`}
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"
                 allow="fullscreen; microphone; camera; geolocation; autoplay"
-                onLoad={() => {
-                  console.log(`Iframe loaded for ${selectedTool?.name} on port ${getIframePort()}`);
-                }}
                 onError={(e) => {
                   console.error(`Iframe error for ${selectedTool?.name}:`, e);
                 }}

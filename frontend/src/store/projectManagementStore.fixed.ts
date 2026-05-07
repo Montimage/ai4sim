@@ -84,11 +84,9 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
       // Actions pour les scénarios
       loadScenariosByProject: async (projectId: string, campaignId?: string) => {
         try {
-          console.log('🔍 Store: Chargement des scénarios...', { projectId, campaignId });
           set({ isLoadingScenarios: true, errorScenarios: null });
           const scenarios = await scenarioService.getScenariosByProject(projectId, campaignId);
           const key = campaignId ? `${projectId}-${campaignId}` : projectId;
-          console.log('✅ Store: Scénarios reçus:', { key, scenarios });
           set(state => ({
             scenarios: {
               ...state.scenarios,
@@ -96,7 +94,6 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
             },
             isLoadingScenarios: false
           }));
-          console.log('💾 Store: État mis à jour avec les scénarios');
         } catch (error) {
           console.error('❌ Store: Erreur lors du chargement des scénarios:', error);
           set({
@@ -406,7 +403,6 @@ export const useProjectManagementStore = create<ProjectManagementState>()(
               ? projectCampaigns.map(c => c._id === campaignId ? campaign : c)
               : [...projectCampaigns, campaign];
             
-            console.log(`🔄 ProjectManagementStore: Campagne ${campaignId} ${campaignExists ? 'mise à jour' : 'ajoutée'} pour le projet ${projectId}`);
             
             return {
               currentCampaign: campaign,

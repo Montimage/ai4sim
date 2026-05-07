@@ -184,13 +184,6 @@ const ScenarioExecution: React.FC<ScenarioExecutionProps> = React.memo(({ scenar
     }
   }, [status, scenarioAttacks, attackOutputs]);
 
-  // Initialize scenario context when parameters are available
-  useEffect(() => {
-    if (projectId && campaignId && scenario) {
-      console.log(`Scenario initialized for project ${projectId} and campaign ${campaignId}`);
-    }
-  }, [projectId, campaignId, scenario]);
-
   // Handle timer for elapsed time
   useEffect(() => {
     // Clear any existing timer first
@@ -747,42 +740,37 @@ const ScenarioExecution: React.FC<ScenarioExecutionProps> = React.memo(({ scenar
   
   // If the scenario ID changes, it's definitely a new scenario - must re-render
   if (prevProps.scenario._id !== nextProps.scenario._id) {
-    console.log(`🔄 [ScenarioExecution] Scenario ID changed: ${prevProps.scenario._id} -> ${nextProps.scenario._id}`);
     return false;
   }
-  
+
   // If the status changes, it needs to be updated
   if (prevProps.scenario.status !== nextProps.scenario.status) {
-    console.log(`🔄 [ScenarioExecution] Status changed: ${prevProps.scenario.status} -> ${nextProps.scenario.status}`);
     return false;
   }
-  
+
   // If the attacks arrays have different lengths, update
   const prevAttacksLength = prevProps.scenario.attacks?.length || 0;
   const nextAttacksLength = nextProps.scenario.attacks?.length || 0;
   if (prevAttacksLength !== nextAttacksLength) {
-    console.log(`🔄 [ScenarioExecution] Attacks length changed: ${prevAttacksLength} -> ${nextAttacksLength}`);
     return false;
   }
-  
+
   // If the attacks are identical in number but different in content, update
   if (prevProps.scenario.attacks && nextProps.scenario.attacks) {
     const prevAttacks = prevProps.scenario.attacks;
     const nextAttacks = nextProps.scenario.attacks;
-    
+
     // Check each attack for significant changes
     for (let i = 0; i < prevAttacks.length; i++) {
-      if (prevAttacks[i].tool !== nextAttacks[i].tool || 
+      if (prevAttacks[i].tool !== nextAttacks[i].tool ||
           prevAttacks[i].processId !== nextAttacks[i].processId ||
           prevAttacks[i].status !== nextAttacks[i].status) {
-        console.log(`🔄 [ScenarioExecution] Attack ${i} changed`);
         return false;
       }
     }
   }
-  
+
   // Otherwise, prevent re-render
-  console.log(`⏸️ [ScenarioExecution] Preventing unnecessary re-render for scenario ${nextProps.scenario._id}`);
   return true;
 });
 

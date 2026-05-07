@@ -75,7 +75,6 @@ class WebSocketService {
                 this.isServerAvailable = isAvailable;
                 
                 if (isAvailable) {
-                    console.log('✅ Serveur WebSocket de nouveau disponible');
                     // Réinitialiser les tentatives de reconnexion
                     this.reconnectAttempts = 0;
                     this.adaptiveReconnectDelay = 1000;
@@ -121,9 +120,7 @@ class WebSocketService {
                 this.adaptiveReconnectDelay = 1000;
                 this.isConnecting = false;
                 this.isServerAvailable = true;
-                
-                console.log('✅ WebSocket connecté avec succès');
-                
+
                 // Authentification immédiate
                 const token = this.getAuthToken();
                 if (token && this.ws?.readyState === WebSocket.OPEN) {
@@ -156,28 +153,8 @@ class WebSocketService {
                             return;
                         }
                         
-                        // Add detailed tracing for raw WebSocket messages
-                        console.log(`🌐 [WebSocket-RAW] Received raw message:`, {
-                            timestamp: Date.now(),
-                            messageLength: event.data.length,
-                            messagePreview: event.data.substring(0, 200)
-                        });
-                        
                         try {
                             const data = JSON.parse(event.data);
-                            
-                            // Add detailed tracing for parsed messages
-                            console.log(`📦 [WebSocket-PARSED] Parsed message:`, {
-                                type: data.type,
-                                scenarioId: data.scenarioId || (data.data && data.data.scenarioId),
-                                attackId: data.data?.attackId || data.data?.data?.attackId,
-                                hasOutput: !!(data.data?.output || data.data?.data?.output),
-                                outputLength: (data.data?.output || data.data?.data?.output)?.length || 0,
-                                timestamp: data.timestamp || data.data?.timestamp,
-                                messageId: data.messageId || data.id,
-                                parseTimestamp: Date.now()
-                            });
-                            
                             this.handleMessage(data);
                         } catch (error) {
                             console.error("Failed to parse WebSocket message as JSON:", error);
@@ -215,8 +192,6 @@ class WebSocketService {
                 this.isConnecting = false;
                 this.clearConnectionTimeout();
                 this.clearPingInterval();
-                
-                console.log(`WebSocket fermé avec le code ${event.code}: ${event.reason}`);
                 this.emit("disconnected", { 
                     type: "disconnected", 
                     code: event.code, 
@@ -270,8 +245,6 @@ class WebSocketService {
             if (isHeavyProcess) {
                 this.adaptiveReconnectDelay = Math.max(this.adaptiveReconnectDelay * 2, 10000);
             }
-            
-            console.log(`🔄 Reconnexion WebSocket programmée dans ${this.adaptiveReconnectDelay}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})${isHeavyProcess ? ' (processus lourd détecté)' : ''}`);
             
             // Vérifier la disponibilité du serveur avant de tenter une reconnexion
             this.checkServerAvailability()
@@ -442,12 +415,9 @@ class WebSocketService {
                 }
             } else if (this.ws?.readyState === WebSocket.CLOSED && !this.isConnecting) {
                 // Tenter une reconnexion si la connexion est fermée
-                console.log('🔄 Connexion fermée détectée, tentative de reconnexion...');
                 this.connect();
             }
         }, pingFrequency);
-        
-        console.log(`📡 Ping configuré toutes les ${pingFrequency/1000} secondes${isHeavyProcess ? ' (processus lourd détecté)' : ''}`);
     }
     
     /**
@@ -474,8 +444,6 @@ class WebSocketService {
      * Force une reconnexion immédiate
      */
     reconnect() {
-        console.log('🔄 Reconnexion forcée demandée');
-        
         if (this.ws) {
             try {
                 this.ws.close(1000, "Manual reconnect");
@@ -498,8 +466,6 @@ class WebSocketService {
      * Reconnexion manuelle avec réinitialisation complète
      */
     manualReconnect() {
-        console.log('🔄 Reconnexion manuelle initiée');
-        
         // Réinitialiser tous les états
         this.reconnectAttempts = 0;
         this.adaptiveReconnectDelay = 1000;
@@ -525,7 +491,6 @@ class WebSocketService {
             .then(isAvailable => {
                 this.isServerAvailable = isAvailable;
                 if (isAvailable) {
-                    console.log('✅ Serveur disponible, connexion...');
                     this.connect();
                 } else {
                     console.warn('⚠️ Serveur indisponible, retry dans 5 secondes...');
@@ -533,7 +498,6 @@ class WebSocketService {
                 }
             })
             .catch(() => {
-                console.log('🔄 Erreur de vérification, tentative de connexion quand même...');
                 this.connect();
             });
     }
@@ -543,20 +507,6 @@ class WebSocketService {
      */
     private handleMessage(data: any) {
         if (typeof data === 'object') {
-            // Add detailed tracing to understand message origins
-            console.log(`🔍 [WebSocket-RAW] Incoming message:`, {
-                type: data.type,
-                scenarioId: data.scenarioId || (data.data && data.data.scenarioId),
-                attackId: data.data?.attackId || data.data?.data?.attackId,
-                hasOutput: !!(data.data?.output || data.data?.data?.output),
-                outputLength: (data.data?.output || data.data?.data?.output)?.length || 0,
-                timestamp: data.timestamp || data.data?.timestamp,
-                messageId: data.messageId || data.id,
-                fullData: data
-            });
-            
-            // Émettre l'événement avec le type de message UNIQUEMENT
-            console.log(`📤 [WebSocket] Emitting event: ${data.type}`);
             this.emit(data.type, data);
         }
     }
@@ -621,22 +571,14 @@ class WebSocketService {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, new Set());
         }
-        const currentCount = this.listeners.get(event)?.size || 0;
         this.listeners.get(event)?.add(callback);
-        const newCount = this.listeners.get(event)?.size || 0;
-        
-        console.log(`➕ [WebSocket-LISTENER] Added listener for '${event}': ${currentCount} → ${newCount} listeners`);
     }
     
     /**
      * Supprime un écouteur pour un type d'événement spécifique
      */
     off(event: string, callback: (data: any) => void) {
-        const currentCount = this.listeners.get(event)?.size || 0;
-        const wasDeleted = this.listeners.get(event)?.delete(callback) || false;
-        const newCount = this.listeners.get(event)?.size || 0;
-        
-        console.log(`➖ [WebSocket-LISTENER] Removed listener for '${event}': ${currentCount} → ${newCount} listeners (deleted: ${wasDeleted})`);
+        this.listeners.get(event)?.delete(callback);
     }
     
     /**
@@ -644,23 +586,8 @@ class WebSocketService {
      */
     private emit(event: string, data?: any) {
         const listeners = this.listeners.get(event);
-        const listenerCount = listeners ? listeners.size : 0;
-        
-        // Add detailed tracing for event emission
-        console.log(`📢 [WebSocket-EMIT] Emitting event '${event}' to ${listenerCount} listeners:`, {
-            event,
-            listenerCount,
-            hasData: !!data,
-            dataType: data?.type,
-            scenarioId: data?.scenarioId || (data?.data && data?.data.scenarioId),
-            timestamp: Date.now()
-        });
-        
-        let callbackIndex = 0;
         listeners?.forEach((callback) => {
             try {
-                callbackIndex++;
-                console.log(`🎯 [WebSocket-EMIT] Calling listener ${callbackIndex}/${listenerCount} for event '${event}'`);
                 callback(data);
             } catch (error) {
                 console.error(`Error in WebSocket ${event} handler:`, error);
@@ -672,8 +599,6 @@ class WebSocketService {
      * Ferme proprement la connexion WebSocket
      */
     disconnect() {
-        console.log('🔌 Déconnexion WebSocket demandée');
-        
         this.clearConnectionTimeout();
         this.clearPingInterval();
         this.clearHealthMonitoring();
@@ -697,10 +622,8 @@ class WebSocketService {
             }
             this.ws = null;
         }
-        
-        console.log('✅ WebSocket déconnecté proprement');
     }
-    
+
     /**
      * Obtient l'état de connexion détaillé
      */
@@ -740,12 +663,7 @@ class WebSocketService {
         if (options.baseDelay !== undefined) {
             this.adaptiveReconnectDelay = Math.max(1000, options.baseDelay);
         }
-        
-        console.log('⚙️ Configuration WebSocket mise à jour:', {
-            maxAttempts: this.maxReconnectAttempts,
-            baseDelay: this.adaptiveReconnectDelay
-        });
-        
+
         // Reconfigurer le ping si connecté
         if (this.isConnected() && options.pingFrequency !== undefined) {
             this.setupPingInterval();
@@ -756,9 +674,7 @@ class WebSocketService {
      * Vide la file d'attente des messages
      */
     clearMessageQueue() {
-        const queueSize = this.messageQueue.length;
         this.messageQueue = [];
-        console.log(`🗑️ File d'attente vidée (${queueSize} messages supprimés)`);
     }
     
     /**
@@ -796,7 +712,6 @@ class WebSocketService {
         // Programmer l'abonnement avec un délai de debounce
         const timer = window.setTimeout(() => {
             if (!this.activeSubscriptions.has(scenarioId)) {
-                console.log(`📡 Subscribing to scenario: ${scenarioId}`);
                 this.activeSubscriptions.add(scenarioId);
                 this.send({
                     type: 'subscribe-scenario',
@@ -828,7 +743,6 @@ class WebSocketService {
         
         // Se désabonner seulement si on était abonné
         if (this.activeSubscriptions.has(scenarioId)) {
-            console.log(`📡 Unsubscribing from scenario: ${scenarioId}`);
             this.activeSubscriptions.delete(scenarioId);
             this.send({
                 type: 'unsubscribe-scenario',
@@ -855,7 +769,6 @@ class WebSocketService {
         }
         
         this.subscriptionDebounce.set(`history-${scenarioId}`, now);
-        console.log(`📡 Requesting execution history for scenario: ${scenarioId}`);
         this.send({
             type: 'request-execution-history',
             scenarioId: scenarioId

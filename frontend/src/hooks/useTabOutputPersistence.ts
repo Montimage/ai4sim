@@ -19,22 +19,7 @@ export const useTabOutputPersistence = (tabId: string) => {
 
       // Si l'onglet n'a pas d'output mais a du cache ou des données persistantes, restaurer
       if (!hasOutput && (hasCache || hasPersistent)) {
-        console.log(`[TabOutputPersistence] Restoring outputs for tab ${tabId}:`, {
-          hasOutput,
-          hasCache,
-          hasPersistent,
-          cacheLength: tabState.outputCache?.length || 0,
-          persistentLength: tabState.persistentOutput?.length || 0,
-          outputLength: tabState.output?.length || 0
-        });
         restoreOutputFromCache(tabId);
-      } else {
-        console.log(`[TabOutputPersistence] No restoration needed for tab ${tabId}:`, {
-          hasOutput,
-          hasCache,
-          hasPersistent,
-          outputLength: tabState.output?.length || 0
-        });
       }
     }
   }, [tabId, restoreOutputFromCache, tabStates]);

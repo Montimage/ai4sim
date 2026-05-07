@@ -71,21 +71,6 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({ tabId }) => {
   // Utiliser le output principal qui est automatiquement synchronisé avec persistentOutput
   const outputs = tabState?.output || [];
 
-  // Debug log pour comprendre l'état des outputs
-  useEffect(() => {
-    const persistentOutput = tabState?.persistentOutput || [];
-    const regularOutput = tabState?.output || [];
-    const cacheOutput = tabState?.outputCache || [];
-    
-    console.log(`[OutputPanel] Tab ${tabId} outputs state:`, {
-      persistentLength: persistentOutput.length,
-      regularLength: regularOutput.length,
-      cacheLength: cacheOutput.length,
-      totalLength: outputs.length,
-      tabState: tabState ? 'exists' : 'missing'
-    });
-  }, [tabId, tabState]);
-
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
     if (autoScroll && outputRef.current) {

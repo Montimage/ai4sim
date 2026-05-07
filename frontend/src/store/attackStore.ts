@@ -231,11 +231,10 @@ export const useAttackStore = create<AttackState>()(
         const newTabs = state.openTabs.filter(tab => tab.id !== id);
         
         if (removedState?.isRunning || removedState?.status === 'running') {
-          websocket.send(JSON.stringify({ 
-            type: "stop", 
+          websocket.send(JSON.stringify({
+            type: "stop",
             tabId: id
           }));
-          console.warn('Stopping running attack for tab:', id);
         }
         
         return {
@@ -259,7 +258,6 @@ export const useAttackStore = create<AttackState>()(
             
             // Si l'output actuel est vide mais qu'on a du cache, restaurer
             if (currentState.output.length === 0 && restoredOutput.length > 0) {
-              console.log(`[setActiveTab] Auto-restoring ${restoredOutput.length} outputs for tab ${id}`);
               return {
                 ...state,
                 activeTabId: id,
@@ -661,7 +659,6 @@ export const useAttackStore = create<AttackState>()(
         const currentState = state.tabStates[tabId];
         
         if (currentState?.isRunning || currentState?.status === 'running' || currentState?.loading) {
-          console.warn('Cannot change tool while attack is running');
           return;
         }
         
@@ -1023,8 +1020,6 @@ export const useAttackStore = create<AttackState>()(
             now - (restoredOutput.length - index) * 1000 // 1 seconde entre chaque message
           );
 
-          console.log(`[restoreOutputFromCache] Tab ${tabId}: restored ${restoredOutput.length} outputs from ${persistentOutput.length > 0 ? 'persistent' : 'cache'}`);
-
           return {
             ...state,
             tabStates: {
@@ -1062,17 +1057,12 @@ export const useAttackStore = create<AttackState>()(
               
               // Vérifier si l'output contient le message de succès
               if (output.includes(successMessage)) {
-                console.log(`🖼️ [addPersistentOutput] Iframe ready detected for ${selectedTool.name}: "${successMessage}"`);
-                
                 // Pour MAIP avec "Compiled successfully!", ajouter un délai d'1 seconde
                 if (selectedTool.id === 'maip' && successMessage === 'Compiled successfully!') {
-                  console.log(`🔄 [addPersistentOutput] MAIP client ready, switching to interface in 1 second...`);
-                  
                   // Fallback: si après 3 secondes le backend n'a pas envoyé iframe-ready, on l'active nous-mêmes
                   setTimeout(() => {
                     const currentState = get().tabStates[tabId];
                     if (currentState && !currentState.iframeReady) {
-                      console.log(`⚠️ [addPersistentOutput] Backend iframe-ready timeout, activating interface as fallback`);
                       get().updateTabState(tabId, {
                         iframeReady: true,
                         status: 'completed',

@@ -30,13 +30,10 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({ execution, scenario }
     setIsFromCache(false);
 
     try {
-      console.log('Starting AI analysis for execution:', execution.id);
-      
       // Check cache first if not forcing refresh
       if (!forceRefresh) {
         const cachedAnalysis = await aiAnalysisService.getCachedAnalysis(execution.id, false);
         if (cachedAnalysis) {
-          console.log('Using cached AI analysis');
           setAnalysis(cachedAnalysis);
           setIsFromCache(true);
           setIsLoading(false);
@@ -50,7 +47,6 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({ execution, scenario }
       }
       
       const result = await aiAnalysisService.analyzeExecution(execution, false); // Without Wazuh for basic analysis
-      console.log('AI analysis completed successfully');
       setAnalysis(result);
       setIsFromCache(false);
     } catch (err) {

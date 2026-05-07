@@ -914,7 +914,7 @@ export class WebSocketManager extends EventEmitter {
                             
                             // Pour MAIP client avec "Compiled successfully!", attendre 1 seconde puis basculer sur l'interface
                             if (step.id === 'client' && step.successMessage === 'Compiled successfully!') {
-                                console.log(`[SEQUENTIAL] MAIP client detected with success message: "${step.successMessage}"`);
+                                logger.debug(`[SEQUENTIAL] MAIP client detected with success message: "${step.successMessage}"`);
                                 
                                 client.send({
                                     type: 'output',
@@ -924,7 +924,7 @@ export class WebSocketManager extends EventEmitter {
                                 });
                                 
                                 setTimeout(() => {
-                                    console.log(`[SEQUENTIAL] Sending switching message for MAIP client`);
+                                    logger.debug(`[SEQUENTIAL] Sending switching message for MAIP client`);
                                     client.send({
                                         type: 'output',
                                         payload: `🖼️ Switching to MAIP interface in 1 second...`,
@@ -934,7 +934,7 @@ export class WebSocketManager extends EventEmitter {
                                     
                                     setTimeout(() => {
                                         if (stepCompleted) {
-                                            console.log(`[SEQUENTIAL] Sending iframe-ready event for MAIP client on port 3001`);
+                                            logger.debug(`[SEQUENTIAL] Sending iframe-ready event for MAIP client on port 3001`);
                                             client.send({
                                                 type: 'iframe-ready',
                                                 tabId,
@@ -943,12 +943,12 @@ export class WebSocketManager extends EventEmitter {
                                             });
                                             resolve(true);
                                         } else {
-                                            console.log(`[SEQUENTIAL] Step not completed, skipping iframe-ready`);
+                                            logger.debug(`[SEQUENTIAL] Step not completed, skipping iframe-ready`);
                                         }
                                     }, 1000); // Délai d'1 seconde avant de basculer sur l'interface
                                 }, 100);
                             } else {
-                                console.log(`[SEQUENTIAL] Regular step completion for ${step.id} with message: "${step.successMessage}"`);
+                                logger.debug(`[SEQUENTIAL] Regular step completion for ${step.id} with message: "${step.successMessage}"`);
                                 // Pour les autres étapes, continuer normalement
                                 setTimeout(() => {
                                     if (stepCompleted) {
@@ -1038,7 +1038,7 @@ export class WebSocketManager extends EventEmitter {
             
             // Exécuter la première étape prête
             const stepToExecute = readySteps[0];
-            console.log(`[SEQUENTIAL] Executing step: ${stepToExecute.id} (${stepToExecute.name})`);
+            logger.debug(`[SEQUENTIAL] Executing step: ${stepToExecute.id} (${stepToExecute.name})`);
             const success = await executeStep(stepToExecute);
             
             // Retirer l'étape de la liste des étapes en attente

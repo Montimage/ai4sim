@@ -61,7 +61,6 @@ export const CampaignDetailView: React.FC = () => {
 
     const handleCampaignUpdate = (data: any) => {
       if (data.campaignId === campaignId) {
-        console.log('🔄 Campaign update received via WebSocket:', data);
         // Reload campaign data when updates are received
         loadData();
       }
@@ -69,7 +68,6 @@ export const CampaignDetailView: React.FC = () => {
 
     const handleScenarioUpdate = (data: any) => {
       if (data.campaignId === campaignId) {
-        console.log('🔄 Scenario update received via WebSocket:', data);
         // Reload scenarios when updates are received
         if (projectId && campaignId) {
           loadScenariosByProject(projectId, campaignId);
@@ -100,22 +98,17 @@ export const CampaignDetailView: React.FC = () => {
     }
 
     try {
-      console.log(`🔄 CampaignDetailView: Loading campaign - projectId=${projectId}, campaignId=${campaignId}`);
-      
       await selectProject(projectId);
-      console.log(`✅ CampaignDetailView: Project selected - projectId=${projectId}`);
-      
+
       try {
         await loadCampaignById(projectId, campaignId);
-        console.log('✅ CampaignDetailView: Campaign loaded');
       } catch (campaignError: any) {
         console.error('❌ CampaignDetailView: Error loading campaign:', campaignError);
         throw new Error('Error loading campaign');
       }
-      
+
       try {
         await loadScenariosByProject(projectId, campaignId);
-        console.log('✅ CampaignDetailView: Scenarios loaded');
       } catch (scenariosError) {
         console.error('❌ CampaignDetailView: Error loading scenarios:', scenariosError);
         throw new Error('Error loading scenarios');
@@ -123,7 +116,6 @@ export const CampaignDetailView: React.FC = () => {
       
       setError(null);
     } catch (err) {
-      console.error('❌ CampaignDetailView: Error during loading:', err);
       const errorMessage = err instanceof Error ? err.message : "Error loading data";
       setError(errorMessage);
       

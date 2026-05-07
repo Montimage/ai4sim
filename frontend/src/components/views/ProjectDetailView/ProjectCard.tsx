@@ -64,7 +64,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                   <p className="text-sm text-gray-500 dark:text-gray-400">Team</p>
                   <div className="flex -space-x-2 overflow-hidden">
                     {[project.owner, ...(project.sharedWith || [])].map((user, index) => {
-                      console.log('🧑‍💻 User data in ProjectCard:', user, typeof user);
                       // Gestion sécurisée des différents formats d'utilisateurs
                       const key = typeof user === 'string' ? user : 
                                  (user && typeof user === 'object' && 'userId' in user) ? user.userId :

@@ -221,7 +221,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
     }
 
     // Vidage complet au début - première étape
-    console.log(`🧹 ConfigPanel: Clearing ALL outputs for tab ${tabId} before execution`);
     useAttackStore.getState().clearOutput(tabId);
     useAttackStore.getState().clearOutputCache(tabId);
 
@@ -419,7 +418,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ tabId }) => {
   
   // Vider l'output quand on change d'outil ou d'attaque
   React.useEffect(() => {
-    console.log(`🧹 ConfigPanel: Tool or attack changed for tab ${tabId}, clearing outputs`);
     useAttackStore.getState().clearOutput(tabId);
     useAttackStore.getState().clearOutputCache(tabId);
   }, [selectedTool?.id, selectedAttack?.id, tabId]);

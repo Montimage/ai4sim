@@ -4,12 +4,6 @@ import { useAttackStore } from "../../../store/attackStore";
 export const AttackTabs: React.FC = () => {
   const { attacks, activeTabId, setActiveTab, closeTab } = useAttackStore();
 
-  useEffect(() => {
-    console.log("AttackTabs rendered");
-  }, []);
-
-  console.log("Number of tabs:", attacks.length);
-
   return (
     <div className="border-b border-gray-200">
       <div className="flex overflow-x-auto">

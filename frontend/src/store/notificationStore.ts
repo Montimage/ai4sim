@@ -116,7 +116,6 @@ export const useNotificationStore = create<NotificationState>()(
         });
 
         if (isDuplicate) {
-          console.log('Notification duplicate détectée, ignorée:', notification.title);
           return;
         }
 

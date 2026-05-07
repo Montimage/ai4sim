@@ -48,17 +48,12 @@ export const ProjectDetailView: React.FC = () => {
   useEffect(() => {
     const loadProject = async () => {
       if (!projectId) {
-        console.log('❌ No projectId provided');
         return;
       }
-      
-      console.log('🔍 loadProject called', { projectId });
-      
+
       try {
         setLoading(true);
-        console.log('📡 Selecting project...');
         await selectProject(projectId);
-        console.log('✅ Project selected successfully');
       } catch (error) {
         console.error('❌ Error loading project:', error);
         addNotification({
@@ -452,15 +447,6 @@ export const ProjectDetailView: React.FC = () => {
   const handleSaveSettings = async () => {
     if (!selectedProject) return;
     
-    console.log('🔍 handleSaveSettings called', {
-      selectedProject: {
-        _id: selectedProject._id,
-        name: selectedProject.name,
-        description: selectedProject.description,
-        users: selectedProject.users
-      }
-    });
-    
     try {
       // Get auth token
       const token = localStorage.getItem('token');
@@ -468,17 +454,13 @@ export const ProjectDetailView: React.FC = () => {
         console.error('❌ No authentication token found');
         throw new Error('No authentication token found');
       }
-      
+
       const requestBody = {
         name: selectedProject.name,
         description: selectedProject.description,
         users: selectedProject.users
       };
-      
-      console.log('📡 Sending PUT request to:', `/api/projects/${selectedProject._id}`);
-      console.log('📋 Request body:', requestBody);
-      console.log('🔑 Using token:', token.substring(0, 20) + '...');
-      
+
       // Sauvegarder les informations du projet ET les utilisateurs
       const response = await fetch(`/api/projects/${selectedProject._id}`, {
         method: 'PUT',
@@ -488,10 +470,7 @@ export const ProjectDetailView: React.FC = () => {
         },
         body: JSON.stringify(requestBody),
       });
-      
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Response not OK:', {
@@ -501,9 +480,8 @@ export const ProjectDetailView: React.FC = () => {
         });
         throw new Error('Failed to update project');
       }
-      
-      const responseData = await response.json();
-      console.log('✅ Project updated successfully:', responseData);
+
+      await response.json();
       
       addNotification({
         type: 'success',

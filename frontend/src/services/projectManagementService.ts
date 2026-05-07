@@ -17,13 +17,11 @@ export class ScenarioService {
   // Récupère tous les scénarios d'un projet ou d'une campagne avec meilleure gestion des erreurs
   async getScenariosByProject(projectId: string, campaignId?: string): Promise<Scenario[]> {
     try {
-      const url = campaignId 
+      const url = campaignId
         ? `/api/projects/${projectId}/campaigns/${campaignId}/scenarios`
         : `/api/projects/${projectId}/scenarios`;
-        
-      console.log(`📊 ScenarioService: Récupération des scénarios pour projet=${projectId}${campaignId ? ` et campagne=${campaignId}` : ''}`);
+
       const response = await api.get(url);
-      console.log('📊 ScenarioService: Scénarios reçus:', response.data);
       return response.data;
     } catch (error: any) {
       console.error(`❌ Error fetching scenarios: projectId=${projectId}${campaignId ? `, campaignId=${campaignId}` : ''}`, error);
@@ -56,9 +54,7 @@ export class ScenarioService {
   // Récupère les scénarios d'une campagne
   async getScenariosByCampaign(projectId: string, campaignId: string): Promise<Scenario[]> {
     try {
-      console.log(`📊 ScenarioService: Récupération des scénarios pour projet=${projectId} et campagne=${campaignId}`);
       const response = await api.get(`/api/projects/${projectId}/campaigns/${campaignId}/scenarios`);
-      console.log(`✅ ScenarioService: ${response.data.length} scénarios reçus`);
       return response.data;
     } catch (error: any) {
       console.error(`❌ Error fetching scenarios for campaign: projectId=${projectId}, campaignId=${campaignId}`, error);
@@ -82,8 +78,6 @@ export class ScenarioService {
         throw new Error('Les identifiants du projet et de la campagne sont requis');
       }
       
-      console.log(`📊 ScenarioService: Création d'un scénario dans le projet=${projectId}, campagne=${campaignId}`, scenarioData);
-      
       // Vérifications des données obligatoires
       if (!scenarioData.name) {
         throw new Error('Le nom du scénario est obligatoire');
@@ -92,7 +86,6 @@ export class ScenarioService {
       // Les cibles et attaques peuvent être configurées après la création du scénario
       
       const response = await api.post(`/api/projects/${projectId}/campaigns/${campaignId}/scenarios`, scenarioData);
-      console.log('✅ ScenarioService: Scénario créé avec succès:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('❌ ScenarioService: Erreur lors de la création du scénario:', error);
@@ -114,9 +107,7 @@ export class ScenarioService {
   // Met à jour un scénario
   async updateScenario(projectId: string, campaignId: string, scenarioId: string, scenarioData: Partial<Scenario>): Promise<Scenario> {
     try {
-      console.log(`📊 ScenarioService: Mise à jour du scénario ${scenarioId} dans le projet=${projectId}, campagne=${campaignId}`, scenarioData);
       const response = await api.put(`/api/projects/${projectId}/campaigns/${campaignId}/scenarios/${scenarioId}`, scenarioData);
-      console.log('✅ ScenarioService: Scénario mis à jour avec succès:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('❌ ScenarioService: Erreur lors de la mise à jour du scénario:', error);
@@ -208,9 +199,7 @@ export class CampaignService {
         throw new Error('Les identifiants projet et campagne sont requis');
       }
       
-      console.log(`📊 CampaignService: Fetching campaign with ID ${campaignId} for project ${projectId}`);
       const response = await api.get(`/api/projects/${projectId}/campaigns/${campaignId}`);
-      console.log(`✅ CampaignService: Successfully retrieved campaign ${campaignId}`);
       return response.data;
     } catch (error: any) {
       console.error(`❌ Error fetching campaign: projectId=${projectId}, campaignId=${campaignId}`, error);
