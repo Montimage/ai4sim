@@ -34,7 +34,7 @@
     "dotenv": "^17.2.0",
     "exceljs": "^4.4.0",
     "node-fetch": "^2.7.0",
-    "puppeteer": "^24.15.0",
+    "puppeteer": "^24.43.0",
     "ws": "^8.18.2"
   }
 }
