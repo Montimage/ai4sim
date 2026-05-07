@@ -39,7 +39,7 @@
     "mobx-react-lite": "^4.1.0",
     "nodemon": "^3.0.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^6.0.3"
   },
   "description": "Backend API for MMT-Pentester Dashboard — Node.js + Express + MongoDB",
   "main": "index.js",
