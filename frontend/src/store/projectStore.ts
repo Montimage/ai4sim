@@ -447,7 +447,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       // Le serveur peut retourner un projet sans la nouvelle campagne (bug backend)
       // Dans ce cas, récupérons manuellement le projet à jour avec une requête supplémentaire
       if (!updatedProject.campaigns || updatedProject.campaigns.length === 0) {
-        console.error(‘❌ ProjectStore: La campagne n\’a pas été renvoyée par le backend, tentative de récupération manuelle...’);
+        console.error('ProjectStore: campaign not returned by backend, fetching manually...');
         try {
           updatedProject = await projectService.getProject(currentProject._id);
         } catch (error) {

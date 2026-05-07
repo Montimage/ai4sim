@@ -307,7 +307,7 @@ class WazuhService {
   }
 
   // Get alerts for a specific time range
-  async getAlertsForExecution(execution: ExecutionRecord): Promise<WazuhAlert[]> {
+  async getAlertsForExecution(_execution: ExecutionRecord): Promise<WazuhAlert[]> {
     try {
       const token = await this.authenticate();
       if (!token) {
@@ -348,8 +348,6 @@ class WazuhService {
 
   // Generate security metrics from alerts
   async getSecurityMetrics(execution: ExecutionRecord): Promise<WazuhSecurityMetrics> {
-    const startTime = Date.now();
-    
     try {
       // Test connection first
       if (this.connectionStatus !== 'connected') {

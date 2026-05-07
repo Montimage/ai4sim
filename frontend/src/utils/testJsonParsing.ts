@@ -55,7 +55,7 @@ const testCases = [
  * Fonction de test pour valider le parsing JSON amélioré
  */
 export function testJsonParsing() {
-  testCases.forEach((testCase, index) => {
+  testCases.forEach((testCase, _index) => {
     try {
       // Test du JSON original
       JSON.parse(testCase.json);

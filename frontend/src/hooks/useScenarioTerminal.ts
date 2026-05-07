@@ -480,10 +480,6 @@ export const useScenarioTerminal = (scenarioId: string) => {
   // Gestionnaire générique pour tous les messages - stable avec useCallback
   const handleGenericMessage = useCallback((data: any) => {
     const dataScenarioId = data.scenarioId || (data.data && data.data.scenarioId);
-    const attackId = data.data?.attackId || data.data?.data?.attackId;
-    const output = data.data?.output || data.data?.data?.output || data.payload || data.message;
-    const messageType = data.type;
-    
     // Check if instance is still active
     if (!isActiveInstance.current) {
       return;

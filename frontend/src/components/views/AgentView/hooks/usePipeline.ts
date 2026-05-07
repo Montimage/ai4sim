@@ -34,58 +34,6 @@ export const usePipeline = (sessionHooks: any, _addMessageToConversation: any) =
       if (data.success) {
         const report = data.report;
         
-        // Construire un message détaillé avec le rapport intelligent
-        let reportMessage = `📊 **RAPPORT DE SÉCURITÉ GÉNÉRÉ PAR IA**
-
-🎯 **Cible :** ${report.target}
-📅 **Date :** ${new Date().toLocaleDateString()}
-⏱️ **Durée :** ${report.statistiques?.totalExecutionTime ? Math.round(report.statistiques.totalExecutionTime / 1000) : 0}s
-
-📋 **RÉSUMÉ EXÉCUTIF**
-${report.executiveSummary || 'Analyse de sécurité terminée'}
-
-📖 **NARRATIVE D'ATTAQUE**
-${report.attackNarrative || 'Les outils de pentest ont été exécutés avec succès'}
-
-🛠️ **MÉTHODOLOGIE UTILISÉE**
-${report.methodologyUsed?.map((method: string) => `• ${method}`).join('\n') || 'Outils de pentest standards'}
-
-📊 **STATISTIQUES**
-• Ports scannés : ${report.statistiques?.totalPortsScanned || 0}
-• Ports ouverts : ${report.statistiques?.openPorts || 0}
-• Vulnérabilités trouvées : ${report.statistiques?.vulnerabilitiesFound || 0}
-• Score de risque : ${report.riskScore || 50}/100
-
-🔍 **VULNÉRABILITÉS IDENTIFIÉES**
-${report.findings?.length > 0 ? 
-  report.findings.map((finding: any, index: number) => 
-    `${index + 1}. **${finding.vulnerability}** (${finding.severity?.toUpperCase()})
-   Service : ${finding.service}:${finding.port}
-   Impact : ${finding.impact}
-   Correction : ${finding.fix}`
-  ).join('\n\n') : 
-  'Aucune vulnérabilité critique identifiée'
-}
-
-🎯 **PLAN DE REMÉDIATION**
-${report.remediationPlan?.length > 0 ? 
-  report.remediationPlan.map((item: any, index: number) => 
-    `${index + 1}. **${item.vulnerability}** (Priorité ${item.priority})
-   Effort estimé : ${item.estimatedEffort}
-   Impact business : ${item.businessImpact}
-   Solution : ${item.fix}`
-  ).join('\n\n') : 
-  'Aucune remédiation urgente requise'
-}
-
-💡 **RECOMMANDATIONS**
-${report.recommendations?.map((rec: string) => `• ${rec}`).join('\n') || 'Effectuer des tests de sécurité réguliers'}
-
-🚀 **PROCHAINES ÉTAPES**
-${report.nextSteps?.map((step: string) => `• ${step}`).join('\n') || 'Analyser les résultats en détail'}`;
-
-        // Find associated conversation and add message
-        // Note: This would need the conversation hooks to find the right conversation
 
         // Créer un lien de téléchargement pour le rapport complet
         const reportBlob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
