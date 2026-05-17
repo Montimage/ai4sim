@@ -22,7 +22,7 @@
     "socket.io": "^4.7.2",
     "systeminformation": "^5.25.11",
     "tcp-port-used": "^1.0.2",
-    "together-ai": "^0.16.0",
+    "together-ai": "^0.39.0",
     "winston": "^3.17.0",
     "ws": "^8.16.0"
   },
